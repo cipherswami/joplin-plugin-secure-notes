@@ -9,14 +9,16 @@ import joplin from "api";
 import { MenuItemLocation, SettingItemType, ToastType, ToolbarButtonLocation } from "api/types";
 import { getTagID, addTag, removeTag, hasTag } from "./utils";
 import { showPasswdDialog, showToast } from "./utils";
-import { encryptData, decryptData } from "./encryption";
+import { AesOptions, encryptData, decryptData } from "./encryption";
 
 // Global Variables
-export let lockedTagId: string | null = null;
-export let isLocked: boolean | null = null;
-export let passwordDialogId: string | null = null;
-export let aesKeySize: 128 | 192 | 256 = 256;
-export let aesMode: "cbc" | "ctr" | "gcm" = "gcm";
+let lockedTagId: string | null = null;
+let isLocked: boolean | null = null;
+let passwordDialogId: string | null = null;
+let  aesOptions: AesOptions = {
+    KeySize: 256,
+    AesMode: "AES-GCM"
+};
 
 // Plugin registration and initialization
 joplin.plugins.register({
@@ -38,12 +40,11 @@ joplin.plugins.register({
                 isEnum: true,
                 options: {
                     128: "128-bit",
-                    192: "192-bit",
                     256: "256-bit (Recommended)",
                 },
             },
             "secureNotes.cipherCategory": {
-                value: "gcm",
+                value: "AES-GCM",
                 type: SettingItemType.String,
                 section: "secureNotes.settings",
                 public: true,
@@ -51,9 +52,9 @@ joplin.plugins.register({
                 description: "Choose the AES encryption mode",
                 isEnum: true,
                 options: {
-                    "cbc": "CBC",
-                    "ctr": "CTR",
-                    "gcm": "GCM (Recommended)",
+                    "AES-CBC": "CBC",
+                    "AES-CTR": "CTR",
+                    "AES-GCM": "GCM (Recommended)",
                 },
             },
         });
@@ -114,8 +115,11 @@ async function updateSettingsChange() {
         "secureNotes.bitSize",
         "secureNotes.cipherCategory"
     ]);
-    aesKeySize = pluginSettings["secureNotes.bitSize"] as 128 | 192 | 256;
-    aesMode = pluginSettings["secureNotes.cipherCategory"] as "cbc" | "ctr" | "gcm";
+    aesOptions = { 
+        KeySize: pluginSettings["secureNotes.bitSize"] as AesOptions["KeySize"],
+        AesMode: pluginSettings["secureNotes.cipherCategory"] as AesOptions["AesMode"],
+    };
+    console.log(aesOptions.KeySize, aesOptions.AesMode);
 }
 
 /**
@@ -148,18 +152,14 @@ async function lockNote() {
     }
 
     // Encryption
-    const passwd = await showPasswdDialog(passwordDialogId, "Encrypt Note", "enter password");
+    const passwd = await showPasswdDialog(passwordDialogId, "Enter password to Encrypt Note");
     if (!passwd) return;
 
-    const encrypted = encryptData(note.body || "", passwd, { 
-        AeskeySize: aesKeySize, 
-        AesMode: aesMode 
-    });
+    const encrypted = await encryptData(note.body || "", passwd, aesOptions);
 
     const payload = {
         info: "This is an encrypted note. Use 'Secure Notes' plugin to unlock.",
-        size: aesKeySize,
-        mode: aesMode,
+        encryption: aesOptions,
         data: encrypted,
     };
 
@@ -193,31 +193,28 @@ async function unlockNote() {
 
     if (
         typeof parsed.data !== "string" ||
-        typeof parsed.mode !== "string" || 
-        typeof parsed.size !== "number"
+        !parsed.encryption?.KeySize ||
+        !parsed.encryption?.AesMode
     ) {
         await showToast("Note format is corrupted.", ToastType.Error);
         return;
     }
 
     // Decryption
-    let placeholder = "enter password";
+    let msg = "Enter password to Decrypt Note";
     while (true) {
-        const passwd = await showPasswdDialog(passwordDialogId, "Decrypt Note", placeholder);
+        const passwd = await showPasswdDialog(passwordDialogId, msg);
         if (!passwd) return;
 
         try {
-            const decrypted = decryptData(parsed.data, passwd, { 
-                AeskeySize: parsed.size, 
-                AesMode: parsed.mode 
-            });
+            const decrypted = await decryptData(parsed.data, passwd, parsed.encryption);
             await joplin.data.put(["notes", note.id], null, { body: decrypted });
             await removeTag(note.id, lockedTagId!);
             await showToast("Note decrypted successfully.", ToastType.Success);
             await updateNotedIdChange();
             return;
         } catch (e) {
-            placeholder = `incorrect password`;
+            msg = "Incorrect password, try again to Decrypt";
         }
     }
 }
