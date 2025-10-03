@@ -1,119 +1,309 @@
 /*****************************************************************************
  * @file        : encryption.ts
- * @description : Note Lock plugin's encryption/decryption logic.
+ * @description : Secure Notes plugin encryption/decryption code.
  *****************************************************************************/
 
-import * as crypto from 'crypto';
+export interface AesOptions {
+    /** 
+     * AES key size in bits. Allowed values: 128, 256. 
+     * NOTE: 192-bit is not supported by mobile compatible WebCrypto.
+     * @default 256
+     */
+    KeySize?: 128 | 256;
 
-export interface CipherOptions {
-    /** AES key size in bits. Allowed values: 128, 192, 256. Default: 256 */
-    AeskeySize?: 128 | 192 | 256;
-    /** AES AesMode. Allowed values: 'cbc', 'ctr', 'gcm'. Default: 'gcm' */
-    AesMode?: "cbc" | "ctr" | "gcm";
+    /** 
+     * AES Mode. Allowed values: 'AES-CBC', 'AES-CTR', 'AES-GCM'. 
+     * @default 'AES-GCM'
+     */
+    AesMode?: "AES-CBC" | "AES-CTR" | "AES-GCM";
 }
 
 /**
- * Encrypts a plaintext string using AES with a password-derived key.
- * Supports flexible key sizes (128, 192, 256) and AesModes (cbc, ctr, gcm).
- *
- * Format of output: Base64(salt + iv + tag + ciphertext)
- * - salt: 16 bytes
- * - iv: 12 bytes for GCM, 16 bytes for CBC/CTR
- * - tag: 16 bytes for GCM, empty for CBC/CTR
- * - ciphertext: variable length
- *
- * @param body - Plaintext string to encrypt
- * @param passwd - Password used to derive encryption key via PBKDF2
- * @param options - Optional encryption settings (keySize and AesMode)
- * @returns Base64-encoded encrypted string
+ * Derives a CryptoKey from a password using PBKDF2.
+ * 
+ * @param password - The user-provided password.
+ * @param salt - A unique salt (Uint8Array) used in key derivation.
+ * @param keySize - AES key size in bits (128 or 256).
+ * @param aesMode - AES algorithm mode ('AES-CBC', 'AES-CTR', 'AES-GCM').
+ * @returns A Promise that resolves to a CryptoKey for AES encryption/decryption.
+ * @throws DOMException if key derivation fails or invalid parameters are provided.
  */
-export function encryptData(
+export async function pbdkf2(
+    password: string,
+    salt: Uint8Array,
+    keySize: number,
+    aesMode: string
+): Promise<CryptoKey> {
+    const encoder = new TextEncoder();
+    const passwordBuffer = encoder.encode(password);
+
+    const keyMaterial = await crypto.subtle.importKey(
+        "raw",
+        passwordBuffer,
+        "PBKDF2",
+        false,
+        ["deriveBits"]
+    );
+
+    const derivedBits = await crypto.subtle.deriveBits(
+        {
+            name: "PBKDF2",
+            salt: salt.buffer as ArrayBuffer,
+            iterations: 100_000,
+            hash: "SHA-256"
+        },
+        keyMaterial,
+        keySize
+    );
+
+    return crypto.subtle.importKey(
+        "raw",
+        derivedBits,
+        { name: aesMode },
+        false,
+        ["encrypt", "decrypt"]
+    );
+}
+
+/**
+ * Derives an HMAC key from a password for message authentication.
+ * Used for CBC and CTR modes.
+ * 
+ * @param password - The user-provided password.
+ * @param salt - A unique salt (Uint8Array) used in key derivation.
+ * @returns A Promise that resolves to a CryptoKey for HMAC signing and verification.
+ * @throws DOMException if key derivation fails or invalid parameters are provided.
+ */
+export async function deriveHmacKey(
+    password: string,
+    salt: Uint8Array
+): Promise<CryptoKey> {
+    const encoder = new TextEncoder();
+    const passwordBuffer = encoder.encode(password);
+
+    const keyMaterial = await crypto.subtle.importKey(
+        "raw",
+        passwordBuffer,
+        "PBKDF2",
+        false,
+        ["deriveBits"]
+    );
+
+    const derivedBits = await crypto.subtle.deriveBits(
+        {
+            name: "PBKDF2",
+            salt: salt.buffer as ArrayBuffer,
+            iterations: 100_000,
+            hash: "SHA-256"
+        },
+        keyMaterial,
+        256
+    );
+
+    return crypto.subtle.importKey(
+        "raw",
+        derivedBits,
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign", "verify"]
+    );
+}
+
+/**
+ * Converts a Uint8Array to a Base64 string.
+ * 
+ * @param buffer - Input Uint8Array.
+ * @returns Base64-encoded string.
+ */
+function arrayBufferToBase64(buffer: Uint8Array): string {
+    let binary = '';
+    const len = buffer.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(buffer[i]);
+    }
+    return btoa(binary);
+}
+
+/**
+ * Converts a Base64 string to a Uint8Array.
+ * 
+ * @param base64 - Base64-encoded string.
+ * @returns Decoded Uint8Array.
+ */
+function base64ToArrayBuffer(base64: string): Uint8Array {
+    const binary = atob(base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+}
+
+/**
+ * Encrypts plaintext using AES with a password-derived key.
+ * Supports AES-GCM, AES-CBC, and AES-CTR.
+ * 
+ * @param body - The plaintext string to encrypt.
+ * @param passwd - Password used to derive the encryption key.
+ * @param options - AES options including KeySize and AesMode.
+ * @returns Base64 string containing salt + IV + tag + ciphertext.
+ * @throws DOMException if encryption fails.
+ */
+export async function encryptData(
     body: string,
     passwd: string,
-    options: CipherOptions = {}
-): string {
-    const keySize = options.AeskeySize || 256;
-    const AesMode = options.AesMode || "gcm";
-    const algorithm = `aes-${keySize}-${AesMode}`;
+    options: AesOptions = {}
+): Promise<string> {
+    const keySize = options.KeySize || 256;
+    const aesMode = options.AesMode || "AES-GCM";
 
-    // Generate random 16-byte salt for key derivation
-    const salt = crypto.randomBytes(16);
+    const salt = new Uint8Array(16);
+    crypto.getRandomValues(salt);
 
-    // Derive key from password + salt using PBKDF2 with SHA-256
-    const key = crypto.pbkdf2Sync(passwd, salt, 100_000, keySize / 8, "sha256");
+    const key = await pbdkf2(passwd, salt, keySize, aesMode);
 
-    // Determine IV length: 12 bytes for GCM, 16 for CBC/CTR
-    const ivLength = AesMode === "gcm" ? 12 : 16;
-    const iv = crypto.randomBytes(ivLength);
+    const ivLength = aesMode === "AES-GCM" ? 12 : 16;
+    const iv = new Uint8Array(ivLength);
+    crypto.getRandomValues(iv);
 
-    // AEAD AesMode options (authTagLength) only for GCM
-    const cipherOptions: crypto.CipherGCMOptions = {};
-    if (AesMode === "gcm") cipherOptions.authTagLength = 16;
+    const encoder = new TextEncoder();
+    const plaintext = encoder.encode(body);
 
-    const cipher = crypto.createCipheriv(algorithm, key, iv, cipherOptions);
+    let encryptedData: Uint8Array;
+    let tag: Uint8Array;
 
-    // Encrypt plaintext
-    const encrypted = Buffer.concat([cipher.update(body, "utf8"), cipher.final()]);
+    if (aesMode === "AES-GCM") {
+        const encrypted = await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: iv.buffer as ArrayBuffer, tagLength: 128 },
+            key,
+            plaintext
+        );
+        const encryptedArray = new Uint8Array(encrypted);
 
-    // Authentication tag for GCM; empty for CBC/CTR
-    const tag = AesMode === "gcm" ? (cipher as crypto.CipherGCM).getAuthTag() : Buffer.alloc(0);
+        tag = encryptedArray.slice(-16);
+        encryptedData = encryptedArray.slice(0, -16);
+    } else {
+        let encrypted: ArrayBuffer;
 
-    // Concatenate salt + iv + tag + ciphertext and encode as Base64
-    return Buffer.concat([salt, iv, tag, encrypted]).toString("base64");
+        if (aesMode === "AES-CTR") {
+            encrypted = await crypto.subtle.encrypt(
+                { name: "AES-CTR", counter: iv.buffer as ArrayBuffer, length: 64 },
+                key,
+                plaintext
+            );
+        } else {
+            encrypted = await crypto.subtle.encrypt(
+                { name: "AES-CBC", iv: iv.buffer as ArrayBuffer },
+                key,
+                plaintext
+            );
+        }
+
+        encryptedData = new Uint8Array(encrypted);
+
+        const hmacKey = await deriveHmacKey(passwd, salt);
+
+        const dataToAuth = new Uint8Array(salt.length + iv.length + encryptedData.length);
+        dataToAuth.set(salt, 0);
+        dataToAuth.set(iv, salt.length);
+        dataToAuth.set(encryptedData, salt.length + iv.length);
+
+        const hmacSignature = await crypto.subtle.sign(
+            "HMAC",
+            hmacKey,
+            dataToAuth.buffer as ArrayBuffer
+        );
+
+        tag = new Uint8Array(hmacSignature);
+    }
+
+    const result = new Uint8Array(salt.length + iv.length + tag.length + encryptedData.length);
+    result.set(salt, 0);
+    result.set(iv, salt.length);
+    result.set(tag, salt.length + iv.length);
+    result.set(encryptedData, salt.length + iv.length + tag.length);
+
+    return arrayBufferToBase64(result);
 }
 
 /**
- * Decrypts a Base64-encoded string produced by encryptData.
- *
- * Automatically extracts salt, IV, and tag (if GCM AesMode) to reconstruct the key.
- *
- * @param encryptedBase64 - Base64 string produced by encryptData
- * @param passwd - Password used to derive decryption key (must match encryption)
- * @param options - Optional decryption settings (keySize and AesMode; must match encryption)
- * @returns Decrypted plaintext string
+ * Decrypts Base64 string produced by encryptData.
+ * Supports AES-GCM, AES-CBC, and AES-CTR.
+ * 
+ * @param encryptedBase64 - Base64 string containing salt + IV + tag + ciphertext.
+ * @param passwd - Password used to derive the encryption key.
+ * @param options - AES options including KeySize and AesMode.
+ * @returns Decrypted plaintext string.
+ * @throws Error if password is incorrect or HMAC verification fails.
+ * @throws DOMException if decryption fails.
  */
-export function decryptData(
+export async function decryptData(
     encryptedBase64: string,
     passwd: string,
-    options: CipherOptions = {}
-): string {
-    const keySize = options.AeskeySize || 256;
-    const AesMode = options.AesMode || "gcm";
-    const algorithm = `aes-${keySize}-${AesMode}`;
+    options: AesOptions = {}
+): Promise<string> {
+    const keySize = options.KeySize || 256;
+    const aesMode = options.AesMode || "AES-GCM";
 
-    const encryptedBuffer = Buffer.from(encryptedBase64, "base64");
+    const encryptedBuffer = base64ToArrayBuffer(encryptedBase64);
 
-    // Extract salt and IV
-    const salt = encryptedBuffer.subarray(0, 16); // use subarray instead of slice
-    const ivLength = AesMode === "gcm" ? 12 : 16;
-    const iv = encryptedBuffer.subarray(16, 16 + ivLength);
+    const salt = new Uint8Array(encryptedBuffer.slice(0, 16));
+    const ivLength = aesMode === "AES-GCM" ? 12 : 16;
+    const iv = new Uint8Array(encryptedBuffer.slice(16, 16 + ivLength));
 
-    // Extract tag and ciphertext
-    let tag: Buffer;
-    let ciphertext: Buffer;
-    if (AesMode === "gcm") {
-        tag = encryptedBuffer.subarray(16 + ivLength, 16 + ivLength + 16);
-        ciphertext = encryptedBuffer.subarray(16 + ivLength + 16);
+    const tagLength = aesMode === "AES-GCM" ? 16 : 32;
+    const tag = new Uint8Array(encryptedBuffer.slice(16 + ivLength, 16 + ivLength + tagLength));
+    const ciphertext = new Uint8Array(encryptedBuffer.slice(16 + ivLength + tagLength));
+
+    const key = await pbdkf2(passwd, salt, keySize, aesMode);
+
+    let decrypted: ArrayBuffer;
+
+    if (aesMode === "AES-GCM") {
+        const ciphertextWithTag = new Uint8Array(ciphertext.length + tag.length);
+        ciphertextWithTag.set(ciphertext, 0);
+        ciphertextWithTag.set(tag, ciphertext.length);
+
+        decrypted = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: iv.buffer as ArrayBuffer, tagLength: 128 },
+            key,
+            ciphertextWithTag.buffer as ArrayBuffer
+        );
     } else {
-        tag = Buffer.alloc(0);
-        ciphertext = encryptedBuffer.subarray(16 + ivLength);
+        const hmacKey = await deriveHmacKey(passwd, salt);
+
+        const dataToVerify = new Uint8Array(salt.length + iv.length + ciphertext.length);
+        dataToVerify.set(salt, 0);
+        dataToVerify.set(iv, salt.length);
+        dataToVerify.set(ciphertext, salt.length + iv.length);
+
+        const isValid = await crypto.subtle.verify(
+            "HMAC",
+            hmacKey,
+            tag.buffer as ArrayBuffer,
+            dataToVerify.buffer as ArrayBuffer
+        );
+
+        if (!isValid) {
+            throw new Error("Invalid password, HMAC verification failed");
+        }
+
+        if (aesMode === "AES-CTR") {
+            decrypted = await crypto.subtle.decrypt(
+                { name: "AES-CTR", counter: iv.buffer as ArrayBuffer, length: 64 },
+                key,
+                ciphertext.buffer as ArrayBuffer
+            );
+        } else {
+            decrypted = await crypto.subtle.decrypt(
+                { name: "AES-CBC", iv: iv.buffer as ArrayBuffer },
+                key,
+                ciphertext.buffer as ArrayBuffer
+            );
+        }
     }
 
-    // Derive key from password + salt using PBKDF2 with SHA-256
-    const key = crypto.pbkdf2Sync(passwd, salt, 100_000, keySize / 8, "sha256");
-
-    // Options for GCM
-    const decipherOptions: crypto.CipherGCMOptions = {};
-    if (AesMode === "gcm") decipherOptions.authTagLength = 16;
-
-    const decipher = crypto.createDecipheriv(algorithm, key, iv, decipherOptions);
-
-    // Set GCM authentication tag if needed
-    if (AesMode === "gcm") (decipher as crypto.DecipherGCM).setAuthTag(tag);
-
-    // Decrypt ciphertext
-    const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
-
-    return decrypted.toString("utf8");
+    const decoder = new TextDecoder();
+    return decoder.decode(decrypted);
 }
-

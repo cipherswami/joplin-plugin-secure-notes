@@ -1,6 +1,6 @@
 /*****************************************************************************
- * @file        : encryption.ts
- * @description : Note Lock plugin's encryption logic file.
+ * @file        : utils.ts
+ * @description : secure Notes plugin utility functions file.
  *****************************************************************************/
 
 import joplin from "api";
@@ -22,7 +22,7 @@ export async function showToast(message: string, type: ToastType = ToastType.Inf
  * @param message - Message to display in the dialog
  * @returns Password string or null if cancelled
  */
-export async function showPasswdDialog(passwdDialogID: any, title: string, placeholder:string): Promise<string | null> {
+export async function showPasswdDialog(passwdDialogID: any, msg: string): Promise<string | null> {
     const dialogs = joplin.views.dialogs;
     await dialogs.setHtml(passwdDialogID,
         `
@@ -37,16 +37,21 @@ export async function showPasswdDialog(passwdDialogID: any, title: string, place
 
             .passwd-title {
                 padding: 2px;
-                margin: 10px 20px 0px;
+                margin: 10px 20px 6px;
+            }
+
+            .passwd-msg {
+                padding: 2px;
+                margin: 0px 20px 0px;
             }
 
             .passwd-form {
                 padding: 2px;
-                margin: 10px 20px 10px;
+                margin: 0px 20px 0px;
             }
 
             .passwd-input {
-                padding: 6px;
+                padding: 2px;
                 border-radius: 6px;
                 text-align: center; 
             }
@@ -54,9 +59,10 @@ export async function showPasswdDialog(passwdDialogID: any, title: string, place
         </style>
 
         <div class="passwd-container">
-            <h1 class="passwd-title">${title}</h1>
+            <h1 class="passwd-title">Secure Notes</h1>
+            <h3 class="passwd-msg">${msg}<h3>
             <form name="passwordForm" class="passwd-form">
-                <input name="password" class="passwd-input" type="password" placeholder="${placeholder}" autofocus/>
+                <input name="password" class="passwd-input" type="password" placeholder="password" autofocus/>
             </form>
         </div>
         `
@@ -115,6 +121,8 @@ export async function hasTag(noteId: string, tagId: string): Promise<boolean> {
 
 /**
  * Adds a tag to a note
+ * @param noteId - Takes current note's ID
+ * @param tagId - Takes tag ID of the tag
  */
 export async function addTag(noteId: string, tagId: string) {
     if (!noteId || !tagId) return;
@@ -127,6 +135,8 @@ export async function addTag(noteId: string, tagId: string) {
 
 /**
  * Removes a tag from a note
+ * @param noteId - Takes current note's ID
+ * @param tagId - Takes tag ID of the tag
  */
 export async function removeTag(noteId: string, tagId: string) {
     if (!noteId || !tagId) return;
