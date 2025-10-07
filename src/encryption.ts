@@ -1,8 +1,12 @@
 /*****************************************************************************
  * @file        : encryption.ts
- * @description : Secure Notes plugin encryption/decryption code.
+ * @description : AES encryption with Webcrypto.
  *****************************************************************************/
 
+/**
+ * Cipher options for the encryption
+ * @interface
+ */
 export interface AesOptions {
     /** 
      * AES key size in bits. Allowed values: 128, 256. 
