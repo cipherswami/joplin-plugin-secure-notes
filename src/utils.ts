@@ -5,6 +5,7 @@
 
 import joplin from "api";
 import { ToastType } from "api/types";
+const MarkdownIt = require("markdown-it");
 
 /**
  * Display a toast message
@@ -145,4 +146,77 @@ export async function removeTag(noteId: string, tagId: string) {
     } catch (err) {
         console.error("removeTag error:", err);
     }
+}
+
+/**
+ * Converts raw Markdown notes to HTML.
+ * TODO: Replace with joplin's internal renderer.
+ * @param md - Markdown RAW text.
+ * @returs HTML form of Markdown.
+ */
+export async function renderMarkdown(md: string) {
+	const markdownIt = new MarkdownIt({
+		linkify: true,
+		breaks: true,
+		html: false,
+	});
+	return markdownIt.render(md);
+}
+
+/**
+ * Referesh the view by opening temp note and shifting back
+ * to original note.
+ * TODO: This is a gimmick, need to eliminate this function.
+ * @param noteId - Markdown RAW text.
+ */
+export async function refreshNoteView(noteId: string) {
+  const note = await joplin.data.get(['notes', noteId], { fields: ['parent_id'] });
+  const tempNote = await joplin.data.post(['notes'], null, {
+      title: 'temp',
+      body: '',
+      parent_id: note.parent_id,
+  });
+
+  // Force refresh by switching notes
+  await joplin.commands.execute('openNote', tempNote.id);
+  await joplin.commands.execute('openNote', noteId);
+  await joplin.data.delete(['notes', tempNote.id], {});
+}
+
+/**
+ * Payload format for the encrypted note
+ * @interface 
+ */
+export interface payloadFormat {
+  info: string;
+  version: string;
+  encryption: Record<string, any>;
+  data: string;
+}
+
+/**
+ * Validates that a string is valid JSON and matches EncryptedNotePayload,
+ * also checks if version matches ENCRYPTOR_VERSION
+ */
+export function validatePayloadFormat(jsonString: string, encryptor_version): payloadFormat | null {
+  let parsed: any;
+
+  try {
+    parsed = JSON.parse(jsonString);
+  } catch {
+    return null; // invalid JSON
+  }
+
+  if (
+    parsed &&
+    typeof parsed === "object" &&
+    typeof parsed.info === "string" &&
+    parsed.version === encryptor_version &&
+    typeof parsed.encryption === "object" &&
+    typeof parsed.data === "string"
+  ) {
+    return parsed as payloadFormat;
+  }
+
+  return null; // invalid structure or version mismatch
 }
