@@ -1,14 +1,15 @@
-/*************************************************************
- * @file        logger.ts
- * @description Logger utility for Joplin plugins with prefixed
- *              console output for better log identification.
+/*****************************************************************************
+ * @file        : logger.ts
+ * @description : Lightweight logger utility for Joplin plugins. Provides 
+ *                prefixed and level-based console output for easier debugging 
+ *                and log filtering.
  * @usage
- * import { createLogger, LogLevel } from './logger';
- * const logger = createLogger('[PluginName]', LogLevel.INFO);
- * logger.info('Message');
- * 
- * // Browser console filter levels are controlled via DevTools
- *************************************************************/
+ *   import { createLogger, LogLevel } from './logger';
+ *   const logger = createLogger('[PluginName]', LogLevel.INFO);
+ *   logger.info('Message');
+ *
+ *   Log filtering is controlled via DevTools console settings.
+ *****************************************************************************/
 
 /**
  * Log level enumeration. Lower values = more verbose.
