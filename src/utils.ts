@@ -1,8 +1,10 @@
 /*****************************************************************************
  * @file        : utils.ts
- * @description : secure Notes plugin utility functions file.
+ * @description : Utility functions for rendering, tagging and dialogs used 
+ *                across this plugin.
  *****************************************************************************/
 
+/** Imports */
 import joplin from "api";
 import { ToastType } from "api/types";
 const MarkdownIt = require("markdown-it");
@@ -195,8 +197,10 @@ export interface payloadFormat {
 }
 
 /**
- * Validates that a string is valid JSON and matches EncryptedNotePayload,
- * also checks if version matches ENCRYPTOR_VERSION
+ * Validates the JSON, payload format and also verifies the encryptor version.
+ * @param jsonString - Input JSON string for validation.
+ * @param encryptor_version - Version of the ENCRYPTOR.
+ * @returns Parsed JSON on validation or else null.
  */
 export function validatePayloadFormat(jsonString: string, encryptor_version): payloadFormat | null {
   let parsed: any;

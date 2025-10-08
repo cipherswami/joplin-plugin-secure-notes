@@ -1,6 +1,9 @@
 /*****************************************************************************
  * @file        : encryption.ts
- * @description : AES encryption with Webcrypto.
+ * @description : AES encryption module using WebCrypto API with PBKDF2-based 
+ *                key derivation. Supports key sizes 128-bit and 256-bit, and 
+ *                AES modes: GCM, CBC, and CTR.
+ * @author      : Aravind Potluri <aravindswami135@gmail.com>
  *****************************************************************************/
 
 /**
