@@ -6,19 +6,19 @@ Secure Notes is a Joplin plugin that lets you password-protect and encrypt your 
 
 ## Features
 
-- 🔒 **Password-Protected Notes** - Encrypt sensitive notes with a password of your choice
-- 👁️ **Read-Only View** - Preview encrypted notes without decrypting them permanently
+- 🔒 **Password-Protected** - Encrypt sensitive notes with a password of your choice
+- 👁️ **Secure View** - Preview encrypted notes without decrypting them permanently
 - 📁 **Local Storage** - Encrypted notes are stored locally in Joplin's database
-- 🛡️ **Strong Encryption** - Uses industrial level AES encryption with Webcrypto API.
+- 🛡️ **Strong Encryption** - Uses industry-standard AES encryption with Webcrypto API.
 - 🔄 **Multiple Modes** - Supports AES-CBC, AES-CTR, and AES-GCM modes with 128-bit or 256-bit key sizes.
 
-## ⚠️ Disclaimer
+## **Disclaimer**
 
-**NO RECOVERY** - If you forget your password, your encrypted notes are **permanently lost**. There is no recovery method, no reset option. It is recomended to maintain backups of important data.
+**NO RECOVERY** – If you forget your password, your encrypted notes are permanently lost. There’s no way to recover or reset it. Please keep backups of anything important.
 
-**NO WARRANTIES** - This plugin is provided "as is" without any guarantees. While it uses industry-standard AES encryption, no system is 100% secure. The author is not liable for data loss or security issues.
+**NO WARRANTIES** – This plugin is provided "as is" without any guarantees. While it uses industry-standard AES encryption, no system is 100% secure. The author is not liable for data loss or security issues.
 
-**Use at your own risk. By using this plugin, you accept these terms.**
+**_Use at your own risk. By using this plugin, you accept these terms._**
 
 ## Installation
 
@@ -78,6 +78,9 @@ Access plugin settings via `Tools > Options > Secure Notes`
 
 **Q: Can I encrypt all my notes or notebook at once?**  
 A: Currently, the plugin encrypts notes individually. Batch encryption may be added in future versions.
+
+**Q: Are resources in my notes encrypted?**  
+A: This plugin only encrypts your note contents. Resources like images, attachments are **not** encrypted because they’re just hyperlinks not the actual files themselves.
 
 **Q: Are encrypted notes searchable?**  
 A: No, encrypted content cannot be searched until the note is decrypted.
