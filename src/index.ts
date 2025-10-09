@@ -48,6 +48,7 @@ let passwordDialogId: string | null = null;
 let editorViewId: string | null = null;
 let noteId: string | null = null;
 let isLocked = false;
+let editorMutex = false;
 let aesOptions: AesOptions = {
   KeySize: 256,
   AesMode: "AES-GCM",
@@ -100,23 +101,23 @@ joplin.plugins.register({
     await joplin.commands.register({
       name: COMMANDS.ENCRYPT,
       label: "Encrypt Note",
-      iconName: "fas fa-lock",
       enabledCondition: "oneNoteSelected",
       execute: encryptNote,
+      iconName: "fas fa-lock",
     });
     await joplin.commands.register({
       name: COMMANDS.DECRYPT,
       label: "Decrypt Note",
-      iconName: "fas fa-unlock",
       enabledCondition: "oneNoteSelected",
       execute: decryptNote,
+      iconName: "fas fa-unlock",
     });
     await joplin.commands.register({
       name: COMMANDS.TOGGLELOCK,
-      label: "Toggle Lock",
-      iconName: "fas fa-lock",
       enabledCondition: "oneNoteSelected",
-      execute: encryptNote,
+      label: "Toggle Lock",
+      execute: isLocked ? decryptNote : encryptNote,
+      iconName: isLocked ? "fas fa-unlock" : "fas fa-lock",
     });
 
     // Register toolbar and menu entries
@@ -149,10 +150,15 @@ joplin.plugins.register({
     await joplin.views.editors.onActivationCheck(editorViewId!, async () => {
       logger.debug("NoteID change detected");
       await updateNoteInfo();
-      if (!isLocked) return false;
-      await ViewNote();
-      return true;
+      return isLocked;
     });
+    await joplin.views.editors.onUpdate(editorViewId, async () => {
+      logger.debug("EditorView Invoked");
+      editorMutex = !editorMutex
+      if (editorMutex) {
+        await ViewNote();
+      }
+    }); 
   },
 });
 
@@ -188,10 +194,10 @@ async function updateNoteInfo() {
     isLocked = lockedStatus;
     await joplin.commands.register({
       name: COMMANDS.TOGGLELOCK,
-      label: isLocked ? "Decrypt Note" : "Encrypt Note",
-      iconName: isLocked ? "fas fa-unlock" : "fas fa-lock",
       enabledCondition: "oneNoteSelected",
+      label: "Toggle Lock",
       execute: isLocked ? decryptNote : encryptNote,
+      iconName: isLocked ? "fas fa-unlock" : "fas fa-lock",
     });
     logger.debug("Toolbar button updated");
   }
@@ -222,7 +228,8 @@ async function updateNoteInfo() {
       </style>
       <div class="secure-view">
         <h1>Secure Notes</h1>
-        <p>🔒 This note is encrypted. Re-select it and enter your password to view its contents.</p>
+        <p>🔒 Encrypted Note</p>
+        <p> To reveal the secure view password prompt open some other note and open this note again.</p>
       </div>
     `);
     logger.debug("Editor placeholder rendered");
@@ -257,9 +264,10 @@ export async function encryptNote() {
   };
   await joplin.data.put(["notes", noteId], null, { body: JSON.stringify(payload, null, 2) });
   await addTag(noteId, lockedTagId!);
-  await refreshNoteView(noteId);
   await showToast("Note encrypted successfully", ToastType.Success);
   logger.info("Encryption complete:", noteId);
+  await joplin.commands.execute('showEditorPlugin');
+  await refreshNoteView(noteId);
 }
 
 /**
@@ -276,7 +284,7 @@ export async function decryptNote() {
 
   // Pre-check: Format validation 
   const noteBody = (await joplin.data.get(["notes", noteId], { fields: ["body"] })).body;
-  const parsed = validatePayloadFormat(noteBody || "{}", ENCRYPTOR_VERSION);
+  const parsed = await validatePayloadFormat(noteBody || "{}", ENCRYPTOR_VERSION);
   if (!parsed) {
     logger.error("Invalid format or version mismatch");
     return showToast("Invalid format or version mismatch", ToastType.Error);
@@ -294,9 +302,9 @@ export async function decryptNote() {
       const decrypted = await decryptData(parsed.data, passwd, parsed.encryption);
       await joplin.data.put(["notes", noteId], null, { body: decrypted });
       await removeTag(noteId, lockedTagId!);
-      await refreshNoteView(noteId);
       await showToast("Note decrypted successfully", ToastType.Success);
       logger.info("Decryption complete:", noteId);
+      await refreshNoteView(noteId);
       break;
     } catch {
       logger.debug("Incorrect password");
@@ -319,7 +327,7 @@ async function ViewNote() {
 
   // Pre-check: Format validation
   const noteBody = (await joplin.data.get(["notes", noteId], { fields: ["body"] })).body;
-  const parsed = validatePayloadFormat(noteBody || "{}", ENCRYPTOR_VERSION);
+  const parsed = await validatePayloadFormat(noteBody || "{}", ENCRYPTOR_VERSION);
   if (!parsed) {
     logger.error("Invalid format or version mismatch");
     return showToast("Invalid format or version mismatch", ToastType.Error);
@@ -331,6 +339,7 @@ async function ViewNote() {
     const passwd = await showPasswdDialog(passwordDialogId, msg);
     if (!passwd) {
       logger.debug("Password dialog cancelled");
+      editorMutex = true; // This MF wasted 1 hr of my time.
       return;
     }
     try {
