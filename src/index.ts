@@ -245,6 +245,10 @@ async function handlePasswordSubmit(password: string) {
   
   if (!parsed) {
     logger.error("Invalid format or version mismatch");
+    await joplin.views.editors.postMessage(editorViewId!, {
+      type: 'password-error',
+      msg: 'Invalid format or version mismatch'
+    });
     return;
   }
 
