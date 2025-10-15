@@ -48,7 +48,6 @@ let passwordDialogId: string | null = null;
 let editorViewId: string | null = null;
 let noteId: string | null = null;
 let isLocked = false;
-let editorMutex = false;
 let aesOptions: AesOptions = {
   KeySize: 256,
   AesMode: "AES-GCM",
@@ -56,6 +55,27 @@ let aesOptions: AesOptions = {
 
 /** Logger instance */
 const logger = createLogger(`[${PLUGIN_ID}]`, LOG_LEVEL);
+
+/**
+ * Generate the placeholder view with password input form
+ */
+const SECURE_VIEW_INPUT = `
+    <div class="secure-view secure-view-input">
+      <h1 class="secure-view-title">🔒 Secure Notes</h1>
+      <p id="secure-subtext" class="secure-subtext">This is an encrypted note</p>
+      
+      <form id="password-form" class="password-form">
+        <input 
+          type="password" 
+          id="password-input" 
+          placeholder="Enter password to view note"
+          autocomplete="off"
+        />
+        <button type="button" id="submit-password">Unlock</button>
+      </form>
+    </div>
+`
+
 
 /**
  * Plugin registerations - commands, UI, and settings, etc.
@@ -142,6 +162,10 @@ joplin.plugins.register({
     lockedTagId = await getTagID(LOCKEDTAG_NAME);
     await updateSettings();
 
+    // Add CSS and JS files to editor view
+    await joplin.views.editors.addScript(editorViewId!, './editorScripts/secureViewPasswd.css');
+    await joplin.views.editors.addScript(editorViewId!, './editorScripts/secureViewPasswd.js');
+
     // Event listeners
     await joplin.settings.onChange(async () => {
       logger.debug("Settings change detected");
@@ -152,13 +176,14 @@ joplin.plugins.register({
       await updateNoteInfo();
       return isLocked;
     });
-    await joplin.views.editors.onUpdate(editorViewId, async () => {
-      logger.debug("EditorView Invoked");
-      editorMutex = !editorMutex
-      if (editorMutex) {
-        await ViewNote();
+    await joplin.views.editors.onMessage(editorViewId!, async (message: any) => {
+      logger.debug("Webview sent a message")
+      if (message.type === 'password-submit') {
+        await handlePasswordSubmit(message.password);
+      } else if (message.type === 'password-error') {
+        logger.info(message.msg);
       }
-    }); 
+    });
   },
 });
 
@@ -202,37 +227,55 @@ async function updateNoteInfo() {
     logger.debug("Toolbar button updated");
   }
 
-  // Show placeholder view for locked notes
+  // Show placeholder view with password form for locked notes
   if (isLocked) {
+    await joplin.views.editors.setHtml(editorViewId!, SECURE_VIEW_INPUT);
+    logger.debug("Secure View I/P rendered");
+  }
+}
+
+/**
+ * Handle password submission from secure view
+ */
+async function handlePasswordSubmit(password: string) {
+
+  // Pre-check: Format validation
+  const noteBody = (await joplin.data.get(["notes", noteId], { fields: ["body"] })).body;
+  const parsed = await validatePayloadFormat(noteBody || "{}", ENCRYPTOR_VERSION);
+  
+  if (!parsed) {
+    logger.error("Invalid format or version mismatch");
+    return;
+  }
+
+  // Try to decrypt with provided password
+  try {
+    const decrypted = await decryptData(parsed.data, password, parsed.encryption);
+    const html = await renderMarkdown(decrypted);
+    
+    // Show decrypted content
     await joplin.views.editors.setHtml(editorViewId!, `
-      <style>
-        html, body {
-          height: 100%;
-          margin: 0;
-          padding: 0;
-        }
-        .secure-view {
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          height: 100vh;
-          font-family: var(--joplin-font-family);
-          font-size: var(--joplin-font-size);
-          color: var(--joplin-color);
-          background-color: var(--joplin-background-color);
-          text-align: center;
-          padding: 2em;
-          box-sizing: border-box;
-        }
-      </style>
       <div class="secure-view">
-        <h1>Secure Notes</h1>
-        <p>🔒 Encrypted Note</p>
-        <p> To reveal the secure view password prompt open some other note and open this note again.</p>
+        <p class="secure-view-info">
+          ⓘ This is a <strong>read-only</strong> view. To edit this note, 
+          please decrypt it first, make your changes, and then re-encrypt the note.
+        </p>
+        <div class="content-wrapper">${html}</div>
       </div>
     `);
-    logger.debug("Editor placeholder rendered");
+    await joplin.views.editors.postMessage(editorViewId!, {
+      type: 'password-success',
+      msg: 'Note Unlocked'
+    });
+    logger.info("Secure View O/P rendered ", noteId);
+    
+  } catch (error) {
+    // TODO: Properly evaluate the error
+    logger.info("Incorrect password");
+    await joplin.views.editors.postMessage(editorViewId!, {
+      type: 'password-error',
+      msg: 'Incorrect password'
+    });
   }
 }
 
@@ -305,114 +348,6 @@ export async function decryptNote() {
       await showToast("Note decrypted successfully", ToastType.Success);
       logger.info("Decryption complete:", noteId);
       await refreshNoteView(noteId);
-      break;
-    } catch {
-      logger.debug("Incorrect password");
-      msg = "Incorrect password, try again";
-    }
-  }
-}
-
-/**
- * Display decrypted content in a read-only temporary view.
- */
-async function ViewNote() {
-  logger.debug("ViewNote invoked");
-
-  // Pre-check: isLocked status
-  if (!isLocked) {
-    logger.warn("Note is not encrypted");
-    return showToast("Note is not encrypted", ToastType.Info);
-  }
-
-  // Pre-check: Format validation
-  const noteBody = (await joplin.data.get(["notes", noteId], { fields: ["body"] })).body;
-  const parsed = await validatePayloadFormat(noteBody || "{}", ENCRYPTOR_VERSION);
-  if (!parsed) {
-    logger.error("Invalid format or version mismatch");
-    return showToast("Invalid format or version mismatch", ToastType.Error);
-  }
-
-  // Temporary Decryption
-  let msg = "Enter password to View Note";
-  while (true) {
-    const passwd = await showPasswdDialog(passwordDialogId, msg);
-    if (!passwd) {
-      logger.debug("Password dialog cancelled");
-      editorMutex = true; // This MF wasted 1 hr of my time.
-      return;
-    }
-    try {
-      const decrypted = await decryptData(parsed.data, passwd, parsed.encryption);
-      const html = await renderMarkdown(decrypted);
-      await joplin.views.editors.setHtml(editorViewId!, `
-        <style>
-          html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-          }
-          .secure-view {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            font-family: var(--joplin-font-family);
-            font-size: var(--joplin-font-size);
-            color: var(--joplin-color);
-            background-color: var(--joplin-background-color);
-            padding: 1em;
-            box-sizing: border-box;
-          }
-          .secure-view > p {
-            text-align: center;
-            padding: 0.5em 1em;
-            margin: 0 0 1em 0;
-            font-size: 0.9em;
-            flex-shrink: 0;
-          }
-          .content-wrapper {
-            flex: 1;
-            overflow-y: auto;
-            padding: 1em;
-            background-color: var(--joplin-background-color3);
-            border: 1px solid var(--joplin-divider-color);
-            border-radius: 8px;
-            min-height: 0;
-          }
-          
-          /* Custom scrollbar styling from yes you kan */
-          ::-webkit-scrollbar {
-            width: 7px;
-            height: 7px;
-          }
-          
-          ::-webkit-scrollbar-corner {
-            background: none;
-          }
-          
-          ::-webkit-scrollbar-track {
-            border: none;
-          }
-          
-          ::-webkit-scrollbar-thumb {
-            background: rgba(100, 100, 100, 0.3);
-            border-radius: 5px;
-          }
-          
-          ::-webkit-scrollbar-track:hover {
-            background: rgba(0, 0, 0, 0.1);
-          }
-          
-          ::-webkit-scrollbar-thumb:hover {
-            background: rgba(100, 100, 100, 0.7);
-          }
-        </style>
-        <div class="secure-view">
-          <p>ⓘ This is a <strong>read-only</strong> view. To edit this note, please decrypt it first, make your changes, and then re-encrypt the note.</p>
-          <div class="content-wrapper">${html}</div>
-        </div>
-      `);
-      logger.info("Read-only view rendered:", noteId);
       break;
     } catch {
       logger.debug("Incorrect password");
