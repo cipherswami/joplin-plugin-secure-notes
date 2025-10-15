@@ -2,7 +2,7 @@
 	"manifest_version": 1,
 	"id": "com.cipherswami.secure.notes",
 	"app_min_version": "3.3",
-	"version": "1.2.3",
+	"version": "1.2.4",
 	"name": "Secure Notes",
 	"description": "Keeps your Joplin notes safe with password and encryption.",
 	"author": "Aravind Potluri",
@@ -24,7 +24,36 @@
 		"desktop",
 		"mobile"
 	],
-	"screenshots": [],
+	"screenshots": [
+		{
+			"src": "docs/assets/sn-encryption.png",
+			"label": "Desktop Encryption"
+		},
+		{
+			"src": "docs/assets/sn-secureview-ip.png",
+			"label": "Desktop SecureView IP"
+		},
+		{
+			"src": "docs/assets/sn-secureview-op.png",
+			"label": "Desktop SecureView OP"
+		},
+		{
+			"src": "docs/assets/sn-decryption.png",
+			"label": "Desktop Decryption"
+		},
+		{
+			"src": "docs/assets/sn-settings.png",
+			"label": "Desktop Settings"
+		},
+		{
+			"src": "docs/assets/sn-mobile-secureview-ip.png",
+			"label": "Mobile SecureView IP"
+		},
+		{
+			"src": "docs/assets/sn-mobile-secureview-op.png",
+			"label": "Mobile SecureView OP"
+		}
+	],
 	"icons": {
 		"16": "docs/assets/icon-16.png",
 		"32": "docs/assets/icon-32.png",
