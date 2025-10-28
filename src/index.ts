@@ -180,10 +180,11 @@ joplin.plugins.register({
       }
     });
     await joplin.workspace.onNoteSelectionChange(async () => {
+      logger.debug("Selected note has changed");
       await updateNoteInfo();
     });
 
-    // Handle the initial note selection
+    // Handle the initial note selection on desktop
     const currentNote = await joplin.workspace.selectedNote();
     if (currentNote) {
       await updateNoteInfo();
