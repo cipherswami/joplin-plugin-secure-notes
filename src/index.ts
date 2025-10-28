@@ -171,11 +171,6 @@ joplin.plugins.register({
       logger.debug("Settings change detected");
       await updateSettings();
     });
-    await joplin.views.editors.onActivationCheck(editorViewId!, async () => {
-      logger.debug("NoteID change detected");
-      await updateNoteInfo();
-      return isLocked;
-    });
     await joplin.views.editors.onMessage(editorViewId!, async (message: any) => {
       logger.debug("Webview sent a message")
       if (message.type === 'password-submit') {
@@ -184,6 +179,15 @@ joplin.plugins.register({
         logger.info(message.msg);
       }
     });
+    await joplin.workspace.onNoteSelectionChange(async () => {
+      await updateNoteInfo();
+    });
+
+    // Handle the initial note selection
+    const currentNote = await joplin.workspace.selectedNote();
+    if (currentNote) {
+      await updateNoteInfo();
+    }
   },
 });
 
@@ -315,6 +319,7 @@ export async function encryptNote() {
   logger.info("Encryption complete:", noteId);
   await joplin.commands.execute('showEditorPlugin');
   await refreshNoteView(noteId);
+  await updateNoteInfo();
 }
 
 /**
@@ -352,6 +357,7 @@ export async function decryptNote() {
       await showToast("Note decrypted successfully", ToastType.Success);
       logger.info("Decryption complete:", noteId);
       await refreshNoteView(noteId);
+      await updateNoteInfo();
       break;
     } catch {
       logger.debug("Incorrect password");
