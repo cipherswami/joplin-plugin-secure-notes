@@ -7,7 +7,7 @@
 /** Imports */
 import joplin from "api";
 import { ToastType } from "api/types";
-const MarkdownIt = require("markdown-it");
+import { AesOptions } from "./encryption";
 
 /**
  * Display a toast message
@@ -17,6 +17,17 @@ const MarkdownIt = require("markdown-it");
  */
 export async function showToast(message: string, type: ToastType = ToastType.Info): Promise<void> {
   await joplin.views.dialogs.showToast({ message, type });
+}
+
+/**
+ * Function parses the given body and checks if contains given blockName. 
+ * @param body - The body to parse
+ * @param blockName - Block Name to verify
+ * @returns True if block name is present in body
+ */
+export async function isCodeblockPresent(body, blockName) {
+  const regex = new RegExp(`\`\`\`${blockName}[\\s\\S]*?\`\`\``, 'i');
+  return regex.test(body);
 }
 
 /**
@@ -88,139 +99,24 @@ export async function showPasswdDialog(passwdDialogID: any, msg: string): Promis
 }
 
 /**
- * Gets existing tag by name or creates it if it doesn't exist
- * @param tagName - Takes tag name
- * @returns TagID of the request tag
+ * Validate and parse the encrypted note format
+ * @param body - The note body to validate
+ * @returns Parsed encryption data or null if invalid
  */
-export async function getTagID(tagName: string): Promise<string | null> {
-    try {
-        const allTags = await joplin.data.get(["tags"]);
-        const existing = allTags.items.find((t: any) => t.title.toLowerCase() === tagName.toLowerCase());
-        if (existing) return existing.id;
-        const created = await joplin.data.post(["tags"], null, { title: tagName });
-        return created.id;
-    } catch (err) {
-        console.error("getTagID error:", err);
-        return null;
-    }
-}
-
-/**
- * Checks if a note has a specific tag
- * @param noteId - Takes current note's ID
- * @param tagId - Takes tag ID of the tag
- * @returns Boolean true if tag is present
- */
-export async function hasTag(noteId: string, tagId: string): Promise<boolean> {
-    if (!noteId || !tagId) return false;
-    try {
-        const noteTags = await joplin.data.get(["notes", noteId, "tags"]);
-        return noteTags.items.some((t: any) => t.id === tagId);
-    } catch (err) {
-        console.error("hasTag error:", err);
-        return false;
-    }
-}
-
-/**
- * Adds a tag to a note
- * @param noteId - Takes current note's ID
- * @param tagId - Takes tag ID of the tag
- */
-export async function addTag(noteId: string, tagId: string) {
-    if (!noteId || !tagId) return;
-    try {
-        await joplin.data.post(["tags", tagId, "notes"], null, { id: noteId });
-    } catch (err) {
-        console.error("addTag error:", err);
-    }
-}
-
-/**
- * Removes a tag from a note
- * @param noteId - Takes current note's ID
- * @param tagId - Takes tag ID of the tag
- */
-export async function removeTag(noteId: string, tagId: string) {
-    if (!noteId || !tagId) return;
-    try {
-        await joplin.data.delete(["tags", tagId, "notes", noteId]);
-    } catch (err) {
-        console.error("removeTag error:", err);
-    }
-}
-
-/**
- * Converts raw Markdown notes to HTML.
- * TODO: Replace with joplin's internal renderer.
- * @param md - Markdown RAW text.
- * @returs HTML form of Markdown.
- */
-export async function renderMarkdown(md: string) {
-	const markdownIt = new MarkdownIt({
-		linkify: true,
-		breaks: true,
-		html: false,
-	});
-	return markdownIt.render(md);
-}
-
-/**
- * Referesh the view by opening temp note and shifting back
- * to original note.
- * TODO: This is a gimmick, need to eliminate this function.
- * @param noteId - Markdown RAW text.
- */
-export async function refreshNoteView(noteId: string) {
-  const note = await joplin.data.get(['notes', noteId], { fields: ['parent_id'] });
-  const tempNote = await joplin.data.post(['notes'], null, {
-      title: 'temp',
-      body: '',
-      parent_id: note.parent_id,
-  });
-
-  // Force refresh by switching notes
-  await joplin.commands.execute('openNote', tempNote.id);
-  await joplin.commands.execute('openNote', noteId);
-  await joplin.data.delete(['notes', tempNote.id], {});
-}
-
-/**
- * Payload format for the encrypted note
- * @interface 
- */
-export interface payloadFormat {
-  info: string;
-  version: string;
-  encryption: Record<string, any>;
-  data: string;
-}
-
-/**
- * Validates the JSON, payload format and also verifies the encryptor version.
- * @param jsonString - Input JSON string for validation.
- * @param encryptor_version - Version of the ENCRYPTOR.
- * @returns Parsed JSON on validation or else null.
- */
-export function validatePayloadFormat(jsonString: string, encryptor_version): payloadFormat | null {
-  let parsed: any;
-
-  try {
-    parsed = JSON.parse(jsonString);
-  } catch {
-    return null; // invalid JSON
+export function validateFormat(body: string): { aesOptions: AesOptions; data: string } | null {
+  const modeMatch = body.match(/mode:\s*([^\n]+)/);
+  const sizeMatch = body.match(/size:\s*(\d+)/);
+  const dataMatch = body.match(/##\s*Data\s+([\s\S]+)$/);
+  
+  if (!modeMatch || !sizeMatch || !dataMatch) {
+    return null;
   }
-
-  if (
-    parsed &&
-    typeof parsed === "object" &&
-    typeof parsed.info === "string" &&
-    parsed.version === encryptor_version &&
-    typeof parsed.encryption === "object" &&
-    typeof parsed.data === "string"
-  ) {
-    return parsed as payloadFormat;
-  }
-
-  return null; // invalid structure or version mismatch
+  
+  return {
+    aesOptions: {
+      AesMode: modeMatch[1].trim() as AesOptions['AesMode'],
+      KeySize: parseInt(sizeMatch[1].trim()) as AesOptions['KeySize'],
+    },
+    data: dataMatch[1].trim()
+  };
 }
