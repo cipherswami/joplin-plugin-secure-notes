@@ -168,19 +168,19 @@ async function toggleLock() {
   logger.debug("IsLocked:", isLocked);
 
   if(!isLocked) {
-    await encryptNote();
+    await encryptNote(note.id);
   } else {
-    await decryptNote();
+    await decryptNote(note.id);
   }
 }
 
 /**
  * Encrypt the active note using a password and AES encryption.
  */
-export async function encryptNote() {
+export async function encryptNote(noteId: string) {
   logger.debug("EncryptNote invoked");
   
-  const note = await joplin.workspace.selectedNote();
+  const note = await joplin.data.get(['notes', noteId], { fields: ['*'] });
   const isLocked = await isCodeblockPresent(note.body, PLUGIN_ID!);
 
   if (isLocked) {
@@ -218,10 +218,10 @@ ${encryptedData}
 /**
  * Decrypt the active note and remove encryption.
  */
-export async function decryptNote() {
+export async function decryptNote(noteId: string) {
   logger.debug("DecryptNote invoked");
   
-  const note = await joplin.workspace.selectedNote();
+  const note = await joplin.data.get(['notes', noteId], { fields: ['*'] });
   const isLocked = await isCodeblockPresent(note.body, PLUGIN_ID!);
 
   if (!isLocked) {
