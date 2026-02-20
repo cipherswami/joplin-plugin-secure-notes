@@ -2,8 +2,6 @@
 
 Secure Notes is a Joplin plugin that lets you password-protect and encrypt your notes locally. It ensures your sensitive information stays private — only you can unlock and read your data.
 
-<link rel="icon" type="image/x-icon" href="docs/assets/icon-32.png">
-
 ## Features
 
 - 🔒 **Password-Protected** - Encrypt sensitive notes with a password of your choice
@@ -22,17 +20,25 @@ Secure Notes is a Joplin plugin that lets you password-protect and encrypt your 
 
 ## Installation
 
-### Plugin Market-Place (Recommended)
+### **From Market-Place (Recommended)**
 
-1. Open Joplin and navigate to `Tools > Options > Plugins`
-2. Search for "Secure Notes"
-3. Click Install and restart Joplin
+- Open Joplin and navigate to **Tools → Options → Plugins → Search**
+- Search for **Secure Notes**
+- Click **Install** and restart Joplin
 
-### Manual Installation
+### **From Source-Build**
 
-1. Follow the instructions in [GENERATOR_DOC](GENERATOR_DOC.md) to generate the `.jpl` file.
-2. Open Joplin → Tools → Options → Plugins → `Install from file`.
-3. Select the generated `.jpl` file and install.
+- Build the plugin package file (.jpl):
+
+  ```bash
+  git clone https://github.com/cipherswami/joplin-plugin-secure-notes.git
+  cd joplin-plugin-secure-notes
+  npm install
+  npm run dist
+  ```
+
+- Then in Joplin, Go to **Tools → Options → Plugins → Install from file**
+- Select the generated `.jpl` file from the `publish/` directory
 
 ## Usage
 
@@ -88,10 +94,13 @@ A: No, encrypted content cannot be searched until the note is decrypted.
 **Q: What happens if I uninstall the plugin?**  
 A: Encrypted notes will remain encrypted. Reinstall the plugin to decrypt them.
 
-## Contributing
+## Support
 
-Contributions are welcome! Feel free to open issues or pull requests on [GitHub](https://github.com/cipherswami/joplin-plugin-secure-notes).
+- **Questions & Discussions**: Join the conversation on the [Joplin Forum](https://discourse.joplinapp.org/t/secure-notes/47501)
+- **Bug Reports**: Report issues on [GitHub Issues](https://github.com/cipherswami/joplin-plugin-secure-notes/issues).
 
 ## License
 
-[MIT License © Aravind Potluri](./LICENSE)
+This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for more details.
+
+Contributions are welcome! Visit the [GitHub repository](https://github.com/cipherswami/joplin-plugin-secure-notes) to submit pull requests or suggest new features.

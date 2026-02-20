@@ -1,6 +1,6 @@
 /*****************************************************************************
  * @file        : utils.ts
- * @description : Utility functions for rendering, tagging and dialogs used 
+ * @description : Utility functions for rendering, tagging and dialogs used
  *                across this plugin.
  *****************************************************************************/
 
@@ -15,18 +15,21 @@ import { AesOptions } from "./encryption";
  * @param type Toast type (Info, Success, Error)
  * @returns Promise<void>
  */
-export async function showToast(message: string, type: ToastType = ToastType.Info): Promise<void> {
+export async function showToast(
+  message: string,
+  type: ToastType = ToastType.Info,
+): Promise<void> {
   await joplin.views.dialogs.showToast({ message, type });
 }
 
 /**
- * Function parses the given body and checks if contains given blockName. 
+ * Function parses the given body and checks if contains given blockName.
  * @param body - The body to parse
  * @param blockName - Block Name to verify
  * @returns True if block name is present in body
  */
 export async function isCodeblockPresent(body, blockName) {
-  const regex = new RegExp(`\`\`\`${blockName}[\\s\\S]*?\`\`\``, 'i');
+  const regex = new RegExp(`\`\`\`${blockName}[\\s\\S]*?\`\`\``, "i");
   return regex.test(body);
 }
 
@@ -36,10 +39,14 @@ export async function isCodeblockPresent(body, blockName) {
  * @param message - Message to display in the dialog
  * @returns Password string or null if cancelled
  */
-export async function showPasswdDialog(passwdDialogID: any, msg: string): Promise<string | null> {
-    const dialogs = joplin.views.dialogs;
-    await dialogs.setHtml(passwdDialogID,
-        `
+export async function showPasswdDialog(
+  passwdDialogID: any,
+  msg: string,
+): Promise<string | null> {
+  const dialogs = joplin.views.dialogs;
+  await dialogs.setHtml(
+    passwdDialogID,
+    `
         <style>
             .passwd-container {
                 display: flex;
@@ -79,23 +86,23 @@ export async function showPasswdDialog(passwdDialogID: any, msg: string): Promis
                 <input name="password" class="passwd-input" type="password" placeholder="password" autofocus/>
             </form>
         </div>
-        `
-    );
+        `,
+  );
 
-    await dialogs.setButtons(passwdDialogID, [
-        { id: "ok", title: "Ok" },
-        { id: "cancel", title: "Cancel" }
-    ]);
+  await dialogs.setButtons(passwdDialogID, [
+    { id: "ok", title: "Ok" },
+    { id: "cancel", title: "Cancel" },
+  ]);
 
-    await dialogs.setFitToContent(passwdDialogID, true);
-    
-    const result = await dialogs.open(passwdDialogID);
-    
-    if (result.id === "ok" && result.formData?.passwordForm?.password) {
-        return result.formData.passwordForm.password;
-    }
-    
-    return null;
+  await dialogs.setFitToContent(passwdDialogID, true);
+
+  const result = await dialogs.open(passwdDialogID);
+
+  if (result.id === "ok" && result.formData?.passwordForm?.password) {
+    return result.formData.passwordForm.password;
+  }
+
+  return null;
 }
 
 /**
@@ -103,20 +110,22 @@ export async function showPasswdDialog(passwdDialogID: any, msg: string): Promis
  * @param body - The note body to validate
  * @returns Parsed encryption data or null if invalid
  */
-export function validateFormat(body: string): { aesOptions: AesOptions; data: string } | null {
+export function validateFormat(
+  body: string,
+): { aesOptions: AesOptions; data: string } | null {
   const modeMatch = body.match(/mode:\s*([^\n]+)/);
   const sizeMatch = body.match(/size:\s*(\d+)/);
   const dataMatch = body.match(/##\s*Data\s+([\s\S]+)$/);
-  
+
   if (!modeMatch || !sizeMatch || !dataMatch) {
     return null;
   }
-  
+
   return {
     aesOptions: {
-      AesMode: modeMatch[1].trim() as AesOptions['AesMode'],
-      KeySize: parseInt(sizeMatch[1].trim()) as AesOptions['KeySize'],
+      AesMode: modeMatch[1].trim() as AesOptions["AesMode"],
+      KeySize: parseInt(sizeMatch[1].trim()) as AesOptions["KeySize"],
     },
-    data: dataMatch[1].trim()
+    data: dataMatch[1].trim(),
   };
 }
