@@ -1,6 +1,6 @@
 {
   "name": "joplin-plugin-secure-notes",
-  "version": "2.0.3",
+  "version": "2.1.0",
   "scripts": {
     "dist": "webpack --env joplin-plugin-config=buildMain && webpack --env joplin-plugin-config=buildExtraScripts && webpack --env joplin-plugin-config=createArchive",
     "prepare": "npm run dist",
@@ -31,6 +31,6 @@
     "webpack-cli": "^4.10.0"
   },
   "dependencies": {
-    "joplin-logger": "^1.0.0"
+    "markdown-it": "^14.1.1"
   }
 }

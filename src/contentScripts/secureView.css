@@ -1,0 +1,116 @@
+/*
+* SecureView overlay styles.
+*/
+
+.secure-view {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 10px; /* Space for scroll bar */
+  bottom: 1px; /* Space for tags bar */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.secure-input {
+  text-align: center;
+  padding: 1em 3em;
+  width: 95%;
+  max-width: 375px;
+  border-radius: 8px;
+  box-sizing: border-box;
+  background-color: var(--joplin-background-color3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.1em;
+}
+
+.secure-title {
+  margin-bottom: 2px;
+  font-weight: 600;
+  font-size: 1.6rem;
+  border-bottom: none;
+}
+
+.password-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 25px;
+  width: 90%;
+  padding: 1em;
+}
+
+.password-form input[type="password"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  text-align: center;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.password-form input[type="password"]:focus {
+  border-color: #007bff;
+}
+
+.password-form button {
+  width: 100%;
+  max-width: 200px;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  color: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.password-form button:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.secure-info {
+  font-size: 0.85rem;
+  opacity: 0.6;
+  margin-bottom: 0px;
+}
+
+.secure-content {
+  display: none;
+}
+
+@keyframes jiggle {
+  0% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-8px);
+  }
+  40% {
+    transform: translateX(8px);
+  }
+  60% {
+    transform: translateX(-5px);
+  }
+  80% {
+    transform: translateX(5px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.jiggle {
+  animation: jiggle 0.4s ease;
+  border-color: #e05c5c !important;
+}

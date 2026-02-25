@@ -1,5 +1,5 @@
 /*****************************************************************************
- * @file        : index.ts
+ * @file        : src/index.ts
  * @description : Secure Notes — a Joplin plugin that encrypts notes with a
  *                password using AES encryption.
  * @author      : Aravind Potluri <aravindswami135@gmail.com>
@@ -7,9 +7,13 @@
 
 /** Imports */
 import joplin from "api";
-import { createLogger } from "joplin-logger";
-import { ToastType, SettingItemType } from "api/types";
-import { ToolbarButtonLocation, MenuItemLocation } from "api/types";
+import {
+  ToastType,
+  SettingItemType,
+  ToolbarButtonLocation,
+  MenuItemLocation,
+  ContentScriptType,
+} from "api/types";
 import {
   showPasswdDialog,
   showToast,
@@ -17,6 +21,8 @@ import {
   validateFormat,
 } from "./utils";
 import { AesOptions, encryptData, decryptData } from "./encryption";
+import { createLogger } from "./logger";
+import MarkdownIt = require("markdown-it");
 
 /** Global constants */
 export const PLUGIN_ID = "SecureNotes";
@@ -40,6 +46,10 @@ export const COMMANDS = {
   ENCRYPT: `${PLUGIN_ID}.encrypt`,
   DECRYPT: `${PLUGIN_ID}.decrypt`,
   TOGGLELOCK: `${PLUGIN_ID}.toggleLock`,
+};
+
+export const CONTENT_SCRIPT = {
+  MarkDownIt_ID: "SecureView",
 };
 
 /** Global state */
@@ -128,11 +138,60 @@ joplin.plugins.register({
       MenuItemLocation.Tools,
     );
 
+    // Register contentScripts
+    await joplin.contentScripts.register(
+      ContentScriptType.MarkdownItPlugin,
+      CONTENT_SCRIPT.MarkDownIt_ID,
+      "./contentScripts/secureView.js",
+    );
+
     // Event listeners
     await joplin.settings.onChange(async () => {
       logger.debug("Settings change detected");
       await updateSettings();
     });
+
+    await joplin.contentScripts.onMessage(
+      CONTENT_SCRIPT.MarkDownIt_ID,
+      async (message: any) => {
+        // MarkdownIt Logger
+        if (message.type === "log") {
+          logger.debug(message.msg);
+        }
+
+        // Password handler
+        if (message.type === "password") {
+          const note = await joplin.workspace.selectedNote();
+          const parsed = await validateFormat(note.body);
+
+          if (!parsed) {
+            logger.error("Invalid format");
+            return { type: "passwordResult", msg: false };
+          }
+
+          try {
+            const decryptedContent = await decryptData(
+              parsed.data,
+              message.msg,
+              parsed.aesOptions,
+            );
+            const markdownIt = new MarkdownIt({
+              linkify: true,
+              breaks: true,
+              html: false,
+            });
+            return {
+              type: "passwordResult",
+              msg: markdownIt.render(decryptedContent),
+            };
+          } catch (error) {
+            logger.debug("Incorrect password or decryption failed");
+            logger.debug(error);
+            return { type: "passwordResult", msg: false };
+          }
+        }
+      },
+    );
 
     // Initialize plugin state
     logger.info("Plugin started");
@@ -244,6 +303,7 @@ export async function decryptNote(noteId: string) {
   }
 
   let msg = "Enter password to Decrypt Note";
+  // TODO: This is dangerous, limit it to 3 counts.
   while (true) {
     const passwd = await showPasswdDialog(passwordDialogId, msg);
     if (!passwd) {
@@ -264,7 +324,7 @@ export async function decryptNote(noteId: string) {
       logger.info("Decryption complete");
       break;
     } catch (error) {
-      logger.debug("Incorrect password or decryption failed:", error);
+      logger.debug("Incorrect password or decryption failed");
       msg = "Incorrect password, try again";
     }
   }
