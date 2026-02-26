@@ -75,6 +75,8 @@ const logger = createLogger(`[${PLUGIN_ID}]`, LOG_LEVEL);
  */
 joplin.plugins.register({
   onStart: async () => {
+    await initializeVersionInfo();
+
     // Register settings section
     await joplin.settings.registerSection(SETTINGS_SECTION.MAIN, {
       label: "Secure Notes",
@@ -189,6 +191,29 @@ joplin.plugins.register({
   },
 });
 
+// Compare semver strings: returns true if version > target
+function versionGt(version: string, target: string): boolean {
+	const v = version.split('.').map(Number);
+	const t = target.split('.').map(Number);
+	for (let i = 0; i < Math.max(v.length, t.length); i++) {
+		if ((v[i] || 0) > (t[i] || 0)) return true;
+		if ((v[i] || 0) < (t[i] || 0)) return false;
+	}
+	return false;
+}
+
+// Get the version of Joplin
+let versionInfo = {
+	mobile: null,
+	version: '',
+};
+
+async function initializeVersionInfo() {
+	const version = await joplin.versionInfo();
+	versionInfo.mobile = version.platform === 'mobile';
+	versionInfo.version = version.version;
+}
+
 /**
  * Update global vars based on settings change.
  */
@@ -300,6 +325,8 @@ export async function encryptNote(note: any) {
     body: await generateEncryptedNote(aesOptions, encryptedData),
   });
 
+  await deleteRevisionsForNote(note.id);
+  await refreshNoteView(note.id);
   await showToast("Note encrypted successfully", ToastType.Success);
   logger.info("Encryption complete");
 }
@@ -343,6 +370,8 @@ export async function decryptNote(note: any) {
       await joplin.data.put(["notes", note.id], null, {
         body: decryptedContent,
       });
+      await deleteRevisionsForNote(note.id);
+      await refreshNoteView(note.id);
       await showToast("Note decrypted successfully", ToastType.Success);
       logger.info("Decryption complete");
       break;
@@ -386,6 +415,8 @@ export async function decryptOldNote(note) {
       await joplin.data.put(["notes", note.id], null, { body: decrypted });
       const tagId = await getTagID("secure-notes");
       await removeTag(note.id, tagId!);
+      await deleteRevisionsForNote(note.id);
+      await refreshNoteView(note.id);
       await showToast("Note decrypted successfully", ToastType.Success);
       logger.info("Decryption complete:", note.id);
       return;
@@ -423,4 +454,29 @@ async function checkForLegacyNote() {
     fields: ["id", "body"],
   });
   await decryptOldNote(fullNote);
+}
+
+async function deleteRevisionsForNote(noteId: string) {
+  const hasDeleteRevisionApi = (!versionInfo.mobile && versionGt(versionInfo.version, '3.6.2')) || (versionInfo.mobile && versionGt(versionInfo.version, '3.6.12'))
+  if (hasDeleteRevisionApi) {
+    await joplin.data.delete(["notes", noteId, "revisions"], null);
+  }
+}
+
+async function refreshNoteView(noteId: string) {
+  const requiresRefreshHack = versionInfo.mobile && !versionGt(versionInfo.version, '3.6.12');
+
+  if (requiresRefreshHack) {
+    const note = await joplin.data.get(['notes', noteId], { fields: ['parent_id'] });
+    const tempNote = await joplin.data.post(['notes'], null, {
+        title: 'temp',
+        body: '',
+        parent_id: note.parent_id,
+    });
+
+    // Force refresh by switching notes
+    await joplin.commands.execute('openNote', tempNote.id);
+    await joplin.commands.execute('openNote', noteId);
+    await joplin.data.delete(['notes', tempNote.id], { permanent: '1' });
+  }
 }
