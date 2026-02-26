@@ -2,7 +2,7 @@
  * @file        : src/contentScripts/runtime.js
  * @description : SecureView runtime script.
  */
-let contentScriptId = null;
+let contentScriptId = "SecureView";
 
 async function logger(msg) {
   if (!contentScriptId) {
@@ -27,10 +27,6 @@ async function handleSubmit() {
   if (!password) {
     shakeInput(snLockInput, "Password cannot be empty");
     logger("Empty password");
-    return;
-  }
-  if (!contentScriptId) {
-    logger("contentScriptId not yet set");
     return;
   }
 
