@@ -2,10 +2,8 @@
  * @file        : src/contentScripts/runtime.js
  * @description : SecureView runtime script.
  */
-
 let contentScriptId = null;
 
-// Plugin Logger
 async function logger(msg) {
   if (!contentScriptId) {
     console.log(msg);
@@ -14,66 +12,72 @@ async function logger(msg) {
   webviewApi.postMessage(contentScriptId, { type: "log", msg: msg });
 }
 
-// InputBox message
-async function shakeInput(passwordInput, placeholderMsg) {
-  passwordInput.value = "";
-  passwordInput.placeholder = placeholderMsg;
-  passwordInput.classList.add("jiggle");
-  setTimeout(() => passwordInput.classList.remove("jiggle"), 400);
-  passwordInput.focus();
+async function shakeInput(input, placeholderMsg) {
+  input.value = "";
+  input.placeholder = placeholderMsg;
+  input.classList.add("jiggle");
+  setTimeout(() => input.classList.remove("jiggle"), 400);
+  input.focus();
 }
 
-// Password handler
 async function handleSubmit() {
-  const passwordInput = document.getElementById("password-input");
-  const password = passwordInput?.value?.trim() ?? "SecureView";
+  const snLockInput = document.getElementById("sn-lock-input");
+  const password = snLockInput?.value?.trim() ?? "";
 
   if (!password) {
-    shakeInput(passwordInput, "Password cannot be empty");
+    shakeInput(snLockInput, "Password cannot be empty");
     logger("Empty password");
     return;
   }
+  if (!contentScriptId) {
+    logger("contentScriptId not yet set");
+    return;
+  }
 
-  const response = await webviewApi.postMessage(contentScriptId, {
+  const decryptionStatus = await webviewApi.postMessage(contentScriptId, {
     type: "password",
     msg: password,
   });
 
-  if (!response.msg) {
-    shakeInput(passwordInput, "Incorrect password, try again");
-  } else {
-    const secuerInput = document.getElementById("secure-input");
-    const secureContent = document.getElementById("secure-content");
-    secuerInput.style.display = "none";
-    secureContent.style.display = "block";
-    secureContent.innerHTML = response.msg;
+  if (!decryptionStatus.msg) {
+    shakeInput(snLockInput, "Incorrect password, try again");
+    return;
   }
+
+  const snView = document.querySelector(".sn-view");
+  const snLock = document.getElementById("sn-lock");
+  const snUnlock = document.getElementById("sn-unlock");
+  const snUnlockContent = document.getElementById("sn-unlock-content");
+
+  snView.classList.add("unlocked");
+  snLock.style.display = "none";
+  snUnlock.style.display = "flex"; // sn-unlock-box inherits naturally as a flex child
+  snUnlockContent.innerHTML = decryptionStatus.msg;
 }
 
-// Init function
+// Init: grab contentScriptId from sn-unlock-content once the DOM is ready
 document.addEventListener("joplin-noteDidUpdate", function () {
   const observer = new MutationObserver(() => {
-    const passwordInput = document.getElementById("password-input");
-    const secureContent = document.getElementById("secure-content");
-    if (passwordInput && secureContent) {
+    const snLockInput = document.getElementById("sn-lock-input");
+    const snUnlockContent = document.getElementById("sn-unlock-content");
+
+    if (snLockInput && snUnlockContent) {
       observer.disconnect();
-      contentScriptId = secureContent.textContent.trim() ?? "secureView";
-      passwordInput.focus();
+      contentScriptId = snUnlockContent.textContent.trim() || "secureView";
+      snLockInput.focus();
     }
   });
   observer.observe(document.body, { childList: true, subtree: true });
 });
 
-// Handle unlock with click
 document.addEventListener("click", function (e) {
-  if (e.target.id === "submit-password") {
+  if (e.target.id === "sn-lock-btn") {
     handleSubmit();
   }
 });
 
-// Handle unlock with "ENTER" key
 document.addEventListener("keydown", function (e) {
-  if (e.target.id === "password-input" && e.key === "Enter") {
+  if (e.target.id === "sn-lock-input" && e.key === "Enter") {
     e.preventDefault();
     handleSubmit();
   }

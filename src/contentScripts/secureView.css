@@ -1,24 +1,32 @@
 /*
-* SecureView overlay styles.
-*/
+ * SecureView overlay styles.
+ */
 
-.secure-view {
-  position: absolute;
+/* ------------------ VIEW ------------------ */
+.sn-view {
+  position: fixed;
+  box-sizing: border-box;
   top: 0;
   left: 0;
-  right: 10px; /* Space for scroll bar */
-  bottom: 1px; /* Space for tags bar */
+  right: 0;
+  bottom: 0;
+}
+.sn-view.unlocked {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
+  flex-direction: column;
+  padding: 0.1rem 0.5rem 0.1rem 0.5rem;
+  overflow: hidden;
 }
 
-.secure-input {
+/* ------------------ LOCK VIEW ------------------ */
+.sn-view .sn-lock {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   text-align: center;
   padding: 1em 3em;
-  width: 95%;
-  max-width: 375px;
+  width: 90%;
   border-radius: 8px;
   box-sizing: border-box;
   background-color: var(--joplin-background-color3);
@@ -28,15 +36,18 @@
   justify-content: space-between;
   gap: 0.1em;
 }
-
-.secure-title {
+.sn-view .sn-lock-title {
   margin-bottom: 2px;
   font-weight: 600;
   font-size: 1.6rem;
   border-bottom: none;
 }
-
-.password-form {
+.sn-view .sn-lock-info {
+  opacity: 0.6;
+  font-size: 0.85rem;
+  margin-bottom: 0;
+}
+.sn-view .sn-lock-form {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -44,25 +55,30 @@
   width: 90%;
   padding: 1em;
 }
-
-.password-form input[type="password"] {
-  width: 100%;
+.sn-view .sn-lock-form input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 65%;
+  max-width: 375px;
   padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 6px;
-  background: transparent;
   color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.452);
+  background: rgba(255, 255, 255, 0.104);
   text-align: center;
   font-size: 0.9rem;
   outline: none;
+  box-shadow: none;
   transition: border-color 0.2s;
 }
-
-.password-form input[type="password"]:focus {
-  border-color: #007bff;
+.sn-view .sn-lock-form input:focus {
+  border-color: #ffffff;
+  box-shadow: none;
+  outline: none;
 }
-
-.password-form button {
+.sn-view .sn-lock-form button {
+  -webkit-appearance: none;
+  appearance: none;
   width: 100%;
   max-width: 200px;
   padding: 8px;
@@ -73,22 +89,56 @@
   font-size: 0.9rem;
   cursor: pointer;
   transition: background 0.2s;
+  box-shadow: none;
 }
-
-.password-form button:hover {
+.sn-view .sn-lock-form button:hover {
   background: rgba(255, 255, 255, 0.25);
 }
 
-.secure-info {
-  font-size: 0.85rem;
-  opacity: 0.6;
-  margin-bottom: 0px;
-}
-
-.secure-content {
+/* ------------------ UNLOCK VIEW ------------------ */
+.sn-view .sn-unlock {
   display: none;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+.sn-view.unlocked .sn-unlock {
+  display: flex;
+}
+.sn-view .sn-unlock-info {
+  opacity: 0.8;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 10px;
+  font-size: 0.85rem;
+  text-align: center;
+  color: var(--joplin-color-faded);
+  background-color: var(--joplin-background-color);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px 8px 0 0;
+}
+.sn-view .sn-unlock-box {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  box-sizing: border-box;
+  background-color: var(--joplin-background-color);
+  border-color: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 0 0 8px 8px;
+}
+.sn-view .sn-unlock-content {
+  width: 100%;
+  padding: 1.5rem;
+  box-sizing: border-box;
 }
 
+/* ------------------ ANIMATION ------------------ */
 @keyframes jiggle {
   0% {
     transform: translateX(0);
@@ -109,7 +159,6 @@
     transform: translateX(0);
   }
 }
-
 .jiggle {
   animation: jiggle 0.4s ease;
   border-color: #e05c5c !important;
