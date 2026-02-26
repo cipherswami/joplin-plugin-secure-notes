@@ -10,9 +10,6 @@ import { ToastType } from "api/types";
 import { AesOptions } from "./encryption";
 import { PLUGIN_ID } from "./index";
 import MarkdownIt = require("markdown-it");
-import * as path from "path";
-import * as os from "os";
-import * as fs from "fs";
 
 /**
  * Display a toast message
@@ -314,27 +311,10 @@ export async function removeTag(noteId: string, tagId: string) {
  * @returns Renderable HTML of the given content
  */
 export async function renderMarkdown(markupContent: string): Promise<string> {
-  const resourceDir = path.join(
-    os.homedir(),
-    ".config",
-    "joplin-desktop",
-    "resources",
-  );
-
-  const resolved = markupContent.replace(/:\/([\w\d]+)/g, (_, id) => {
-    const filePath = path.join(resourceDir, `${id}.png`);
-    try {
-      const base64 = fs.readFileSync(filePath).toString("base64");
-      return `data:image/png;base64,${base64}`;
-    } catch {
-      return "";
-    }
-  });
-
   const markdownIt = new MarkdownIt({
     linkify: true,
     breaks: true,
     html: true,
   });
-  return markdownIt.render(resolved);
+  return markdownIt.render(markupContent);
 }
