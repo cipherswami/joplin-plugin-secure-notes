@@ -2,7 +2,7 @@
 	"manifest_version": 1,
 	"id": "com.cipherswami.secure.notes",
 	"app_min_version": "3.3",
-	"version": "2.2.1",
+	"version": "2.2.2",
 	"name": "Secure Notes",
 	"description": "Keeps your Joplin notes safe with password and encryption.",
 	"author": "Aravind Potluri",

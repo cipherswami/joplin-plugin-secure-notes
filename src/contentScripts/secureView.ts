@@ -11,7 +11,6 @@
 export default function (context: any) {
   return {
     plugin: function (markdownIt: any, _options: any) {
-      console.log("[Secure Notes]: Ran SecureView");
       const originalRender = markdownIt.render.bind(markdownIt);
       const secureFence = /```SecureNotes/;
       const contentScriptId = context.contentScriptId;
@@ -19,12 +18,10 @@ export default function (context: any) {
       markdownIt.render = function (src: string, env: any) {
         // Fast check for any codeFence
         if (!src.includes("```")) {
-          console.log("[Secure Notes]: No codefence");
           return originalRender(src, env);
         }
         // Check for SecureNotes codeFence
         if (!secureFence.test(src)) {
-          console.log("[Secure Notes]: No secure note codefence");
           return originalRender(src, env);
         }
         // Render SecureView
@@ -32,7 +29,7 @@ export default function (context: any) {
           <div class="sn-view joplin-editable">
             <div id="sn-lock" class="sn-lock">
               <h1 class="sn-lock-title">🔒 Secure Notes</h1>
-              <p class="sn-lock-info">ⓘ This is an encrypted note</p>
+              <p class="sn-lock-info">This is an encrypted note</p>
               <form id="sn-lock-form" class="sn-lock-form">
                 <input
                   id="sn-lock-input"

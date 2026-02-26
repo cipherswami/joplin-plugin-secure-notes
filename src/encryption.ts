@@ -158,11 +158,15 @@ export async function decryptData(
     ciphertextWithTag.set(ciphertext, 0);
     ciphertextWithTag.set(tag, ciphertext.length);
 
-    decrypted = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: iv.buffer as ArrayBuffer, tagLength: 128 },
-      key,
-      ciphertextWithTag.buffer as ArrayBuffer,
-    );
+    try {
+      decrypted = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: iv.buffer as ArrayBuffer, tagLength: 128 },
+        key,
+        ciphertextWithTag.buffer as ArrayBuffer,
+      );
+    } catch {
+      throw new WrongPasswordError();
+    }
   } else {
     const hmacKey = await deriveHmacKey(passwd, salt);
 
@@ -181,7 +185,7 @@ export async function decryptData(
     );
 
     if (!isValid) {
-      throw new Error("Invalid password, HMAC verification failed");
+      throw new WrongPasswordError();
     }
 
     if (aesMode === "AES-CTR") {
@@ -208,6 +212,20 @@ export async function decryptData(
  *                                Helper Funcs
  * ****************************************************************************
  */
+
+/**
+ * Custom error class to indicate a wrong password during decryption.
+ * Thrown by decryptData when AES-GCM auth tag verification fails or
+ * HMAC verification fails for AES-CBC/CTR modes.
+ *
+ * @extends Error
+ */
+export class WrongPasswordError extends Error {
+  constructor() {
+    super("Wrong password");
+    this.name = "WrongPasswordError";
+  }
+}
 
 /**
  * Converts a Uint8Array to a Base64 string.
