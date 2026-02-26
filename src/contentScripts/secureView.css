@@ -11,10 +11,11 @@
   right: 0;
   bottom: 0;
 }
+
 .sn-view.unlocked {
   display: flex;
   flex-direction: column;
-  padding: 0.3rem 0.5rem 0.3rem 0.5rem;
+  padding: 0.3rem 0.5rem;
   overflow: hidden;
 }
 
@@ -25,8 +26,10 @@
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  padding: 1em 3em;
+  padding: 1.5em 2em;
   width: 90%;
+  max-width: 480px;
+  min-width: 260px;
   border-radius: 8px;
   box-sizing: border-box;
   background-color: var(--joplin-background-color3);
@@ -36,31 +39,36 @@
   justify-content: space-between;
   gap: 0.1em;
 }
+
 .sn-view .sn-lock-title {
   margin-bottom: 2px;
   font-weight: 600;
   font-size: 1.6rem;
   border-bottom: none;
 }
+
 .sn-view .sn-lock-info {
   opacity: 0.6;
   font-size: 0.85rem;
   margin-bottom: 0;
 }
+
 .sn-view .sn-lock-form {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 25px;
-  width: 90%;
-  padding: 1em;
+  gap: 1.2em;
+  width: 100%;
+  padding: 1em 0;
 }
+
 .sn-view .sn-lock-form input {
   -webkit-appearance: none;
   appearance: none;
-  width: 65%;
+  width: 80%;
   max-width: 375px;
-  padding: 10px;
+  min-width: 180px;
+  padding: 0.6em;
   border-radius: 6px;
   color: inherit;
   border: 1px solid rgba(255, 255, 255, 0.452);
@@ -71,17 +79,20 @@
   box-shadow: none;
   transition: border-color 0.2s;
 }
+
 .sn-view .sn-lock-form input:focus {
   border-color: #ffffff;
   box-shadow: none;
   outline: none;
 }
+
 .sn-view .sn-lock-form button {
   -webkit-appearance: none;
   appearance: none;
-  width: 100%;
+  width: 50%;
   max-width: 200px;
-  padding: 8px;
+  min-width: 100px;
+  padding: 0.5em;
   border: none;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.15);
@@ -91,6 +102,7 @@
   transition: background 0.2s;
   box-shadow: none;
 }
+
 .sn-view .sn-lock-form button:hover {
   background: rgba(255, 255, 255, 0.25);
 }
@@ -107,31 +119,34 @@
   border-radius: 8px;
   box-sizing: border-box;
 }
+
 .sn-view.unlocked .sn-unlock {
   display: flex;
 }
+
 .sn-view .sn-unlock-info {
-  opacity: 0.8;
   flex-shrink: 0;
   width: 100%;
   box-sizing: border-box;
-  padding: 5px 10px;
+  padding: 0.4em 0.8em;
   font-size: 0.85rem;
   text-align: center;
   color: var(--joplin-color-faded);
   background-color: var(--joplin-background-color);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 8px 8px 0 0;
 }
+
 .sn-view .sn-unlock-box {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   box-sizing: border-box;
   background-color: var(--joplin-background-color);
-  border-color: 1px solid rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 0 0 8px 8px;
 }
+
 .sn-view .sn-unlock-content {
   width: 100%;
   padding: 1.5rem;
@@ -159,6 +174,7 @@
     transform: translateX(0);
   }
 }
+
 .jiggle {
   animation: jiggle 0.4s ease;
   border-color: #e05c5c !important;

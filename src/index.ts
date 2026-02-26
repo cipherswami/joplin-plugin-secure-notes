@@ -15,7 +15,6 @@ import {
   ContentScriptType,
 } from "api/types";
 import {
-  showPasswdDialog,
   showToast,
   validateFormat,
   renderMarkdown,
@@ -26,8 +25,15 @@ import {
   removeTag,
   getTagID,
   hasTag,
+  showEncryptionDialog,
+  showDecryptionDialog,
 } from "./utils";
-import { AesOptions, encryptData, decryptData } from "./encryption";
+import {
+  AesOptions,
+  WrongPasswordError,
+  encryptData,
+  decryptData,
+} from "./encryption";
 import { createLogger } from "./pluginLogger";
 
 /** Global constants */
@@ -59,7 +65,8 @@ export const CONTENT_SCRIPT = {
 };
 
 /** Global state */
-let passwordDialogId: string | null = null;
+let encryptionDialogId: string | null = null;
+let decryptionDialogId: string | null = null;
 let LegacyNoteDialogId: string | null = null;
 let lockedTagId: string | null = null;
 let aesOptions: AesOptions = {
@@ -128,7 +135,7 @@ joplin.plugins.register({
     await joplin.commands.register({
       name: COMMANDS.TOGGLELOCK,
       enabledCondition: "oneNoteSelected",
-      label: "Toggle Lock",
+      label: "Toggle Note Lock",
       execute: toggleLock,
       iconName: "fas fa-user-lock",
     });
@@ -182,7 +189,8 @@ joplin.plugins.register({
 
     // Initialize plugin state
     logger.info("Plugin started");
-    passwordDialogId = await joplin.views.dialogs.create("PasswordDialog");
+    encryptionDialogId = await joplin.views.dialogs.create("encryptionDialog");
+    decryptionDialogId = await joplin.views.dialogs.create("decryptionDialog");
     LegacyNoteDialogId = await joplin.views.dialogs.create("LegacyNoteDialog");
     lockedTagId = await getTagID("secure-notes");
     await updateSettings();
@@ -248,7 +256,8 @@ export async function handlePasswdSubmit(passwd: string) {
 
   if (!parsed) {
     logger.error("Invalid format");
-    return { type: "passwordResult", msg: null };
+    await showToast("Invalid format", ToastType.Error);
+    return { type: "error", msg: "Invalid format" };
   }
 
   try {
@@ -261,13 +270,17 @@ export async function handlePasswdSubmit(passwd: string) {
     const renderedContent = await renderMarkdown(decryptedContent);
 
     return {
-      type: "passwordResult",
+      type: "success",
       msg: renderedContent,
     };
   } catch (error) {
-    logger.info("Incorrect password or decryption failed");
-    logger.debug(error);
-    return { type: "passwordResult", msg: null };
+    if (error instanceof WrongPasswordError) {
+      logger.info("Incorrect password");
+      return { type: "error", msg: "Incorrect password, try again" };
+    }
+    logger.error("Decryption error:", error);
+    showToast("Decryption failed", ToastType.Error);
+    return { type: "error", msg: "Decryption failed" };
   }
 }
 
@@ -286,9 +299,9 @@ export async function encryptNote(note: any) {
     return;
   }
 
-  const passwd = await showPasswdDialog(
-    passwordDialogId,
-    "Enter password to Encrypt Note",
+  const passwd = await showEncryptionDialog(
+    encryptionDialogId,
+    "Enter password to Encrypt",
   );
   if (!passwd) {
     logger.debug("Password dialog cancelled");
@@ -325,10 +338,10 @@ export async function decryptNote(note: any) {
     return;
   }
 
-  let msg = "Enter password to Decrypt Note";
+  let msg = "Enter password to Decrypt";
   // TODO: This is dangerous, limit it to 3 counts.
   while (true) {
-    const passwd = await showPasswdDialog(passwordDialogId, msg);
+    const passwd = await showDecryptionDialog(decryptionDialogId, msg);
     if (!passwd) {
       logger.debug("Password dialog cancelled");
       return;
@@ -368,15 +381,14 @@ export async function decryptOldNote(note) {
     return;
   }
 
-  let msg = "Enter password to Decrypt Note";
-  let attempts = 0;
-  const MAX_ATTEMPTS = 3;
+  let msg = "Enter password to Decrypt";
 
-  while (attempts < MAX_ATTEMPTS) {
-    const passwd = await showPasswdDialog(passwordDialogId, msg);
-    if (!passwd) return;
-
-    attempts++;
+  while (true) {
+    const passwd = await showDecryptionDialog(decryptionDialogId, msg);
+    if (!passwd) {
+      logger.debug("Password dialog cancelled");
+      return;
+    }
     try {
       const decrypted = await decryptData(
         parsed.encryption,
@@ -384,25 +396,15 @@ export async function decryptOldNote(note) {
         passwd,
       );
       await joplin.data.put(["notes", note.id], null, { body: decrypted });
-      const tagId = await getTagID("secure-notes");
-      await removeTag(note.id, tagId!);
+      await removeTag(note.id, lockedTagId!);
       await showToast("Note decrypted successfully", ToastType.Success);
       logger.info("Decryption complete:", note.id);
       return;
     } catch {
-      logger.debug("Incorrect password, attempt:", attempts);
-      msg =
-        attempts < MAX_ATTEMPTS
-          ? `Incorrect password, try again (${attempts}/${MAX_ATTEMPTS})`
-          : "Too many failed attempts";
+      logger.info("Incorrect password or decryption failed");
+      msg = "Incorrect password, try again";
     }
   }
-
-  await showToast(
-    "Too many failed attempts. Note was not decrypted.",
-    ToastType.Error,
-  );
-  logger.info("Max attempts reached for note:", note.id);
 }
 
 /**

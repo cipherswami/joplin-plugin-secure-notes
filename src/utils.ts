@@ -25,84 +25,240 @@ export async function showToast(
 }
 
 /**
- * Shows a password input dialog with custom message
+ * Shows a password input dialog for encryption (with confirm field).
  * @param passwdDialogID - Password dialog instance to use
- * @param message - Message to display in the dialog
+ * @param msg - Message to display in the dialog
  * @returns Password string or null if cancelled
- * TODO: https://github.com/cipherswami/joplin-plugin-secure-notes/issues #5 and #16
- * Make two funcs if neccessary showEncryptDialog() and showDecryptDialog().
- * And move the js and css to pluginScripts folder.
  */
-export async function showPasswdDialog(
+export async function showEncryptionDialog(
   passwdDialogID: any,
   msg: string,
 ): Promise<string | null> {
   const dialogs = joplin.views.dialogs;
+  let currentMsg = msg;
+
+  while (true) {
+    await dialogs.setHtml(
+      passwdDialogID,
+      `
+      <style>
+        * {
+          box-sizing: border-box;
+        }
+
+        body {
+          margin: 0;
+          padding: 0;
+        }
+
+        .passwd-container {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          text-align: center;
+          padding: 1.5em 2em 1em;
+          width: 100%;
+        }
+
+        .passwd-title {
+          font-size: 1.4rem;
+          font-weight: 600;
+          margin: 0 0 0.5em 0;
+          padding: 0;
+          border-bottom: none;
+        }
+
+        .passwd-msg {
+          font-size: 0.95rem;
+          margin: 0 0 1em 0;
+          padding: 0;
+          opacity: 0.9;
+        }
+
+        .passwd-form {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.5em;
+          margin: 0;
+          padding: 0;
+        }
+
+        .passwd-input {
+          width: 100%;
+          max-width: 260px;
+          padding: 0.5em;
+          border-radius: 6px;
+          text-align: center;
+          font-size: 0.9rem;
+        }
+      </style>
+
+      <div class="passwd-container">
+        <h1 class="passwd-title">Secure Notes</h1>
+        <h3 class="passwd-msg">${currentMsg}</h3>
+        <form name="passwordForm" class="passwd-form">
+          <input
+            id="passwd-input"
+            name="password"
+            class="passwd-input"
+            type="password"
+            placeholder="password"
+          />
+          <input
+            name="confirmPassword"
+            class="passwd-input"
+            type="password"
+            placeholder="confirm password"
+          />
+          <input type="submit" style="display: none;" />
+        </form>
+      </div>
+
+      <script>
+        setTimeout(() => {
+          document.getElementById("passwd-input").focus();
+        }, 100);
+      </script>
+      `,
+    );
+
+    await dialogs.setButtons(passwdDialogID, [
+      { id: "ok", title: "Ok" },
+      { id: "cancel", title: "Cancel" },
+    ]);
+    await dialogs.setFitToContent(passwdDialogID, true);
+
+    const result = await dialogs.open(passwdDialogID);
+    if (result.id !== "ok") return null;
+
+    const password = result.formData?.passwordForm?.password || "";
+    const confirm = result.formData?.passwordForm?.confirmPassword || "";
+
+    if (!password) {
+      currentMsg = "Password cannot be empty";
+      continue;
+    }
+
+    if (password !== confirm) {
+      currentMsg = "Passwords do not match";
+      continue;
+    }
+
+    return password;
+  }
+}
+
+/**
+ * Shows a password input dialog for decryption.
+ * @param passwdDialogID - Password dialog instance to use
+ * @param msg - Message to display in the dialog
+ * @returns Password string or null if cancelled
+ */
+export async function showDecryptionDialog(
+  passwdDialogID: any,
+  msg: string,
+): Promise<string | null> {
+  const dialogs = joplin.views.dialogs;
+
   await dialogs.setHtml(
     passwdDialogID,
     `
-        <style>
-            .passwd-container {
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                text-align: center;
-            }
+    <style>
+      * {
+        box-sizing: border-box;
+      }
 
-            .passwd-title {
-                padding: 2px;
-                margin: 10px 20px 6px;
-            }
+      body {
+        margin: 0;
+        padding: 0;
+      }
 
-            .passwd-msg {
-                padding: 2px;
-                margin: 0px 20px 0px;
-            }
+      .passwd-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 1.5em 2em 1em;
+        width: 100%;
+      }
 
-            .passwd-form {
-                padding: 2px;
-                margin: 0px 20px 0px;
-            }
+      .passwd-title {
+        font-size: 1.4rem;
+        font-weight: 600;
+        margin: 0 0 0.5em 0;
+        padding: 0;
+        border-bottom: none;
+      }
 
-            .passwd-input {
-                padding: 2px;
-                border-radius: 6px;
-                text-align: center; 
-            }
-            
-        </style>
+      .passwd-msg {
+        font-size: 0.95rem;
+        margin: 0 0 1em 0;
+        padding: 0;
+        opacity: 0.9;
+      }
 
-        <div class="passwd-container">
-            <h1 class="passwd-title">Secure Notes</h1>
-            <h3 class="passwd-msg">${msg}<h3>
-            <form name="passwordForm" class="passwd-form">
-                <input name="password" class="passwd-input" type="password" placeholder="password" autofocus/>
-            </form>
-        </div>
-        `,
+      .passwd-form {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 0;
+        padding: 0;
+      }
+
+      .passwd-input {
+        width: 100%;
+        max-width: 260px;
+        padding: 0.5em;
+        border-radius: 6px;
+        text-align: center;
+        font-size: 0.9rem;
+      }
+    </style>
+
+    <div class="passwd-container">
+      <h1 class="passwd-title">Secure Notes</h1>
+      <h3 class="passwd-msg">${msg}</h3>
+      <form name="passwordForm" class="passwd-form">
+        <input
+          id="passwd-input"
+          name="password"
+          class="passwd-input"
+          type="password"
+          placeholder="password"
+        />
+      </form>
+    </div>
+
+    <script>
+      setTimeout(() => {
+        document.getElementById("passwd-input").focus();
+      }, 100);
+    </script>
+    `,
   );
 
   await dialogs.setButtons(passwdDialogID, [
     { id: "ok", title: "Ok" },
     { id: "cancel", title: "Cancel" },
   ]);
-
   await dialogs.setFitToContent(passwdDialogID, true);
 
   const result = await dialogs.open(passwdDialogID);
-
   if (result.id === "ok" && result.formData?.passwordForm?.password) {
     return result.formData.passwordForm.password;
   }
-
   return null;
 }
 
 /**
- * Function parses the given body and checks if contains given blockName.
- * @param body - The body to parse
- * @param blockName - Block Name to verify
+ * function parses the given body and checks if contains given blockname.
+ * @param body - the body to parse
+ * @param blockname - block name to verify
  * @returns True if block name is present in body
  */
 export async function isNoteLocked(body) {
