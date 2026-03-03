@@ -1,32 +1,42 @@
 /**
  * @file        : src/contentScripts/secureView.ts
- * @description : Editor renderer.
- */
-
-/**
- * SecureView MarkdownIt renderer.
- * @param context For future reference, for now contains contentScriptId
- * @returns Renders joplin editor with the markdownIt.
+ * @description : SecureNotes MarkdownIt renderer (RTE-safe).
  */
 export default function (context: any) {
   return {
-    plugin: function (markdownIt: any, _options: any) {
-      const originalRender = markdownIt.render.bind(markdownIt);
-      const secureFence = /```SecureNotes/;
-      const contentScriptId = context.contentScriptId;
-      // SecureView Renderer
-      markdownIt.render = function (src: string, env: any) {
-        // Fast check for any codeFence
-        if (!src.includes("```")) {
-          return originalRender(src, env);
+    plugin: function (markdownIt: any) {
+      const defaultFence =
+        markdownIt.renderer.rules.fence ||
+        function (tokens: any, idx: number, options: any, env: any, self: any) {
+          return self.renderToken(tokens, idx, options);
+        };
+
+      markdownIt.renderer.rules.fence = function (
+        tokens: any,
+        idx: number,
+        options: any,
+        env: any,
+        self: any,
+      ) {
+        const token = tokens[idx];
+        const info = (token.info || "").trim();
+
+        if (info !== "SecureNotes") {
+          return defaultFence(tokens, idx, options, env, self);
         }
-        // Check for SecureNotes codeFence
-        if (!secureFence.test(src)) {
-          return originalRender(src, env);
-        }
-        // Render SecureView
+
+        const content = token.content;
+        const escaped = markdownIt.utils.escapeHtml(content);
+        const contentScriptId = context.contentScriptId;
+
         return `
           <div class="sn-view joplin-editable">
+            <pre
+              class="joplin-source"
+              data-joplin-language="SecureNotes"
+              data-joplin-source-open="\`\`\`SecureNotes\n"
+              data-joplin-source-close="\`\`\`"
+            >${escaped}</pre>
             <div id="sn-lock" class="sn-lock">
               <h1 class="sn-lock-title">🔒 Secure Notes</h1>
               <p class="sn-lock-info">This is an encrypted note</p>

@@ -277,8 +277,8 @@ export async function generateEncryptedNote(
   encryptedData: string,
 ) {
   const secureNotesBlock = `\`\`\`${PLUGIN_ID}
-This is an encrypted note. Use the Secure Notes plugin to decrypt it.
-\`\`\`
+## Info
+This is an encrypted note, use Secure Notes plugin and switch to viewer layout to view the note.
 
 ## Encryption
 mode: ${aesOptions.AesMode}
@@ -286,6 +286,7 @@ size: ${aesOptions.KeySize}
 
 ## Data
 ${encryptedData}
+\`\`\`
 `;
   return secureNotesBlock;
 }
@@ -298,9 +299,24 @@ ${encryptedData}
 export function validateFormat(
   body: string,
 ): { aesOptions: AesOptions; data: string } | null {
-  const modeMatch = body.match(/mode:\s*([^\n]+)/);
-  const sizeMatch = body.match(/size:\s*(\d+)/);
-  const dataMatch = body.match(/##\s*Data\s+([\s\S]+)$/);
+  const blockMatch = body.match(/^```SecureNotes\n([\s\S]+?)\n```$/m);
+  if (!blockMatch) {
+    return null;
+  }
+
+  const inner = blockMatch[1];
+
+  const encryptionMatch = inner.match(/##\s*Encryption\s*\n([\s\S]+?)(?=##|$)/);
+  console.log(encryptionMatch);
+  if (!encryptionMatch) {
+    return null;
+  }
+
+  const encryptionSection = encryptionMatch[1];
+
+  const modeMatch = encryptionSection.match(/mode:\s*([^\n]+)/);
+  const sizeMatch = encryptionSection.match(/size:\s*(\d+)/);
+  const dataMatch = inner.match(/##\s*Data\s*\n([\s\S]+)$/);
 
   if (!modeMatch || !sizeMatch || !dataMatch) {
     return null;
