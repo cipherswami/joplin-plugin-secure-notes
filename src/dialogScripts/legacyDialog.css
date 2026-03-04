@@ -1,0 +1,36 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  padding: 0;
+}
+.legacy-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 1.5em 2em 1em;
+  width: 100%;
+}
+.legacy-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 0 0 0.5em 0;
+  padding: 0;
+  border-bottom: none;
+}
+.legacy-msg {
+  font-size: 0.95rem;
+  margin: 0 0 1em 0;
+  padding: 0;
+  opacity: 0.9;
+}
+.legacy-info {
+  font-size: 0.75rem;
+  opacity: 0.75;
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+}

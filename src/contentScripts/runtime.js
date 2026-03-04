@@ -5,10 +5,12 @@
 
 let contentScriptId = "SecureView";
 
+// Plugin Logger
 function logger(msg) {
   webviewApi.postMessage(contentScriptId, { type: "log", msg: msg });
 }
 
+// ShowInputBox Error function
 function shakeInput(input, placeholderMsg) {
   input.value = "";
   input.placeholder = placeholderMsg;
@@ -17,25 +19,7 @@ function shakeInput(input, placeholderMsg) {
   input.focus();
 }
 
-function resetView() {
-  const snView = document.querySelector(".sn-view");
-  if (!snView) return;
-
-  const snLock = document.getElementById("sn-lock");
-  const snUnlock = document.getElementById("sn-unlock");
-  const snUnlockContent = document.getElementById("sn-unlock-content");
-  const snLockInput = document.getElementById("sn-lock-input");
-
-  snView.classList.remove("unlocked");
-  if (snLock) snLock.style.display = "";
-  if (snUnlock) snUnlock.style.display = "none";
-  if (snUnlockContent) snUnlockContent.innerHTML = contentScriptId;
-  if (snLockInput) {
-    snLockInput.value = "";
-    snLockInput.placeholder = "Enter Password to View Note";
-  }
-}
-
+// Password handle function
 async function handleSubmit() {
   const snLockInput = document.getElementById("sn-lock-input");
   const password = snLockInput?.value?.trim() ?? "";
@@ -67,31 +51,51 @@ async function handleSubmit() {
   snUnlockContent.innerHTML = decryptionStatus.msg;
 }
 
-// Init: grab contentScriptId from sn-unlock-content once the DOM is ready
-// and reset view state on note update
-document.addEventListener("joplin-noteDidUpdate", function () {
-  resetView();
+// Initializtion
+document.addEventListener("joplin-noteDidUpdate", async function () {
+  const source = document.querySelector(".joplin-source");
+  const dataCSID = source?.getAttribute("data-content-script-id");
+  if (dataCSID) contentScriptId = dataCSID;
 
-  const observer = new MutationObserver(() => {
-    const snLockInput = document.getElementById("sn-lock-input");
-    const snUnlockContent = document.getElementById("sn-unlock-content");
+  const snView = document.querySelector(".sn-view");
+  const snRte = document.getElementById("sn-rte");
+  const snLock = document.getElementById("sn-lock");
+  const snUnlock = document.getElementById("sn-unlock");
+  const input = document.getElementById("sn-lock-input");
 
-    if (snLockInput && snUnlockContent) {
-      observer.disconnect();
-      contentScriptId = snUnlockContent.textContent.trim() || "SecureView";
-      snLockInput.focus();
-    }
+  const response = await webviewApi.postMessage(contentScriptId, {
+    type: "getEditorMode",
   });
+  const isRTE = response?.mode === "rte";
 
-  observer.observe(document.body, { childList: true, subtree: true });
+  if (isRTE) {
+    if (snView) snView.style.display = "";
+    if (snRte) snRte.style.display = "flex";
+    if (snLock) snLock.style.display = "none";
+    if (snUnlock) snUnlock.style.display = "none";
+    if (source) source.style.display = "none";
+  } else {
+    if (snView) snView.style.display = "";
+    if (snRte) snRte.style.display = "none";
+    if (source) source.style.display = "none";
+    if (snLock) snLock.style.display = "flex";
+    if (snUnlock) snUnlock.style.display = "none";
+    if (input) {
+      input.value = "";
+      input.placeholder = "Enter Password to View Note";
+      input.focus();
+    }
+  }
 });
 
+// Click event listener
 document.addEventListener("click", function (e) {
   if (e.target.id === "sn-lock-btn") {
     handleSubmit();
   }
 });
 
+// Keypress eventlistener
 document.addEventListener("keydown", function (e) {
   if (e.target.id === "sn-lock-input" && e.key === "Enter") {
     e.preventDefault();
