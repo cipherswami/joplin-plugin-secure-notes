@@ -36,66 +36,10 @@ export async function showEncryptionDialog(
 ): Promise<string | null> {
   const dialogs = joplin.views.dialogs;
   let currentMsg = msg;
-
   while (true) {
     await dialogs.setHtml(
       passwdDialogID,
       `
-      <style>
-        * {
-          box-sizing: border-box;
-        }
-
-        body {
-          margin: 0;
-          padding: 0;
-        }
-
-        .passwd-container {
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          text-align: center;
-          padding: 1.5em 2em 1em;
-          width: 100%;
-        }
-
-        .passwd-title {
-          font-size: 1.4rem;
-          font-weight: 600;
-          margin: 0 0 0.5em 0;
-          padding: 0;
-          border-bottom: none;
-        }
-
-        .passwd-msg {
-          font-size: 0.95rem;
-          margin: 0 0 1em 0;
-          padding: 0;
-          opacity: 0.9;
-        }
-
-        .passwd-form {
-          width: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.5em;
-          margin: 0;
-          padding: 0;
-        }
-
-        .passwd-input {
-          width: 100%;
-          max-width: 260px;
-          padding: 0.5em;
-          border-radius: 6px;
-          text-align: center;
-          font-size: 0.9rem;
-        }
-      </style>
-
       <div class="passwd-container">
         <h1 class="passwd-title">Secure Notes</h1>
         <h3 class="passwd-msg">${currentMsg}</h3>
@@ -116,37 +60,33 @@ export async function showEncryptionDialog(
           <input type="submit" style="display: none;" />
         </form>
       </div>
-
-      <script>
-        setTimeout(() => {
-          document.getElementById("passwd-input").focus();
-        }, 100);
-      </script>
       `,
     );
-
+    await dialogs.addScript(
+      passwdDialogID,
+      "./dialogScripts/encryptionDialog.css",
+    );
+    await dialogs.addScript(
+      passwdDialogID,
+      "./dialogScripts/encryptionDialog.js",
+    );
     await dialogs.setButtons(passwdDialogID, [
       { id: "ok", title: "Ok" },
       { id: "cancel", title: "Cancel" },
     ]);
     await dialogs.setFitToContent(passwdDialogID, true);
-
     const result = await dialogs.open(passwdDialogID);
     if (result.id !== "ok") return null;
-
     const password = result.formData?.passwordForm?.password || "";
     const confirm = result.formData?.passwordForm?.confirmPassword || "";
-
     if (!password) {
       currentMsg = "Password cannot be empty";
       continue;
     }
-
     if (password !== confirm) {
       currentMsg = "Passwords do not match";
       continue;
     }
-
     return password;
   }
 }
@@ -162,97 +102,49 @@ export async function showDecryptionDialog(
   msg: string,
 ): Promise<string | null> {
   const dialogs = joplin.views.dialogs;
-
-  await dialogs.setHtml(
-    passwdDialogID,
-    `
-    <style>
-      * {
-        box-sizing: border-box;
-      }
-
-      body {
-        margin: 0;
-        padding: 0;
-      }
-
-      .passwd-container {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-        padding: 1.5em 2em 1em;
-        width: 100%;
-      }
-
-      .passwd-title {
-        font-size: 1.4rem;
-        font-weight: 600;
-        margin: 0 0 0.5em 0;
-        padding: 0;
-        border-bottom: none;
-      }
-
-      .passwd-msg {
-        font-size: 0.95rem;
-        margin: 0 0 1em 0;
-        padding: 0;
-        opacity: 0.9;
-      }
-
-      .passwd-form {
-        width: 100%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin: 0;
-        padding: 0;
-      }
-
-      .passwd-input {
-        width: 100%;
-        max-width: 260px;
-        padding: 0.5em;
-        border-radius: 6px;
-        text-align: center;
-        font-size: 0.9rem;
-      }
-    </style>
-
-    <div class="passwd-container">
-      <h1 class="passwd-title">Secure Notes</h1>
-      <h3 class="passwd-msg">${msg}</h3>
-      <form name="passwordForm" class="passwd-form">
-        <input
-          id="passwd-input"
-          name="password"
-          class="passwd-input"
-          type="password"
-          placeholder="password"
-        />
-      </form>
-    </div>
-
-    <script>
-      setTimeout(() => {
-        document.getElementById("passwd-input").focus();
-      }, 100);
-    </script>
-    `,
-  );
-
-  await dialogs.setButtons(passwdDialogID, [
-    { id: "ok", title: "Ok" },
-    { id: "cancel", title: "Cancel" },
-  ]);
-  await dialogs.setFitToContent(passwdDialogID, true);
-
-  const result = await dialogs.open(passwdDialogID);
-  if (result.id === "ok" && result.formData?.passwordForm?.password) {
-    return result.formData.passwordForm.password;
+  let currentMsg = msg;
+  while (true) {
+    await dialogs.setHtml(
+      passwdDialogID,
+      `
+      <div class="passwd-container">
+        <h1 class="passwd-title">Secure Notes</h1>
+        <h3 class="passwd-msg">${currentMsg}</h3>
+        <form name="passwordForm" class="passwd-form">
+          <input
+            id="passwd-input"
+            name="password"
+            class="passwd-input"
+            type="password"
+            placeholder="password"
+          />
+          <input type="submit" style="display: none;" />
+        </form>
+      </div>
+      `,
+    );
+    await dialogs.addScript(
+      passwdDialogID,
+      "./dialogScripts/decryptionDialog.css",
+    );
+    await dialogs.addScript(
+      passwdDialogID,
+      "./dialogScripts/decryptionDialog.js",
+    );
+    await dialogs.setButtons(passwdDialogID, [
+      { id: "ok", title: "Ok" },
+      { id: "cancel", title: "Cancel" },
+    ]);
+    await dialogs.setFitToContent(passwdDialogID, true);
+    const result = await dialogs.open(passwdDialogID);
+    if (result.id !== "ok") return null;
+    const password = result.formData?.passwordForm?.password || "";
+    if (!password) {
+      currentMsg = "Password cannot be empty";
+      continue;
+    }
+    return password;
   }
-  return null;
 }
 
 /**
@@ -278,7 +170,7 @@ export async function generateEncryptedNote(
 ) {
   const secureNotesBlock = `\`\`\`${PLUGIN_ID}
 ## Info
-This is an encrypted note, use Secure Notes plugin and switch to viewer layout to view the note.
+This is an encrypted note, use Secure Notes plugin and switch to Markdown editor's viewer layout to view the contents.
 
 ## Encryption
 mode: ${aesOptions.AesMode}
@@ -299,7 +191,9 @@ ${encryptedData}
 export function validateFormat(
   body: string,
 ): { aesOptions: AesOptions; data: string } | null {
-  const blockMatch = body.match(/^```SecureNotes\n([\s\S]+?)\n```$/m);
+  const blockMatch = body.match(
+    new RegExp(`^\\\`\\\`\\\`${PLUGIN_ID}\\n([\\s\\S]+?)\\n\\\`\\\`\\\`$`, "m"),
+  );
   if (!blockMatch) {
     return null;
   }
@@ -307,7 +201,6 @@ export function validateFormat(
   const inner = blockMatch[1];
 
   const encryptionMatch = inner.match(/##\s*Encryption\s*\n([\s\S]+?)(?=##|$)/);
-  console.log(encryptionMatch);
   if (!encryptionMatch) {
     return null;
   }
@@ -338,46 +231,9 @@ export function validateFormat(
  */
 export async function showLegacyDialog(legacyDialogId: any): Promise<boolean> {
   const dialogs = joplin.views.dialogs;
-
   await dialogs.setHtml(
     legacyDialogId,
     `
-    <style>
-      body {
-        min-width: 420px;
-        margin: 0;
-        padding: 0;
-      }
-
-      .legacy-container {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-        padding: 24px 36px 16px;
-        box-sizing: border-box;
-        width: 100%;
-      }
-
-      .legacy-title {
-        font-size: 1.6em;
-        margin: 0px 0px 14px;
-      }
-
-      .legacy-msg {
-        font-size: 1.1em;
-        margin: 0px 0px 14px;
-      }
-
-      .legacy-info {
-        font-size: 0.95em;
-        opacity: 0.75;
-        line-height: 1.6;
-        margin: 0px 0px 8px;
-      }
-    </style>
-
     <div class="legacy-container">
       <h1 class="legacy-title">Secure Notes</h1>
       <h3 class="legacy-msg">Legacy format</h3>
@@ -388,12 +244,12 @@ export async function showLegacyDialog(legacyDialogId: any): Promise<boolean> {
     </div>
     `,
   );
+  await dialogs.addScript(legacyDialogId, "./dialogScripts/legacyDialog.css");
   await dialogs.setButtons(legacyDialogId, [
     { id: "decrypt", title: "Decrypt Note" },
     { id: "close", title: "Close" },
   ]);
   await dialogs.setFitToContent(legacyDialogId, true);
-
   const result = await dialogs.open(legacyDialogId);
   return result.id === "decrypt";
 }
@@ -489,4 +345,38 @@ export async function renderMarkdown(markupContent: string): Promise<string> {
     html: true,
   });
   return markdownIt.render(markupContent);
+}
+
+/**
+ * Referesh the view by opening temp note and shifting back
+ * to original note.
+ * @param noteId - Markdown RAW text.
+ * NOTE: Added for mobile compatibility until joplin 3.6.12
+ *       is released.
+ */
+export async function refreshNoteView(noteId: string) {
+  const note = await joplin.data.get(["notes", noteId], {
+    fields: ["parent_id"],
+  });
+  const tempNote = await joplin.data.post(["notes"], null, {
+    title: "temp",
+    body: "",
+    parent_id: note.parent_id,
+  });
+
+  // Force refresh by switching notes
+  await joplin.commands.execute("openNote", tempNote.id);
+  await joplin.commands.execute("openNote", noteId);
+  await joplin.data.delete(["notes", tempNote.id], {});
+}
+
+/**
+ * Payload format for the encrypted note
+ * @interface
+ */
+export interface payloadFormat {
+  info: string;
+  version: string;
+  encryption: Record<string, any>;
+  data: string;
 }

@@ -27,6 +27,7 @@ import {
   hasTag,
   showEncryptionDialog,
   showDecryptionDialog,
+  refreshNoteView,
 } from "./utils";
 import {
   AesOptions,
@@ -61,7 +62,7 @@ export const COMMANDS = {
 };
 
 export const CONTENT_SCRIPT = {
-  MarkDownIt_ID: "SecureView",
+  MARKDOWNIT_ID: "SecureView",
 };
 
 /** Global state */
@@ -156,7 +157,7 @@ joplin.plugins.register({
     // Register contentScripts
     await joplin.contentScripts.register(
       ContentScriptType.MarkdownItPlugin,
-      CONTENT_SCRIPT.MarkDownIt_ID,
+      CONTENT_SCRIPT.MARKDOWNIT_ID,
       "./contentScripts/secureView.js",
     );
 
@@ -167,7 +168,7 @@ joplin.plugins.register({
     });
 
     await joplin.contentScripts.onMessage(
-      CONTENT_SCRIPT.MarkDownIt_ID,
+      CONTENT_SCRIPT.MARKDOWNIT_ID,
       async (message: any) => {
         // MarkdownIt Logger
         if (message.type === "log") {
@@ -179,6 +180,14 @@ joplin.plugins.register({
         if (message.type === "password") {
           const decryptStatus = await handlePasswdSubmit(message.msg);
           return decryptStatus;
+        }
+
+        // Get the editor mode
+        if (message.type === "getEditorMode") {
+          const values = await joplin.settings.globalValues([
+            "editor.codeView",
+          ]);
+          return { mode: values[0] ? "markdown" : "rte" };
         }
       },
     );
@@ -315,6 +324,7 @@ export async function encryptNote(note: any) {
 
   await showToast("Note encrypted successfully", ToastType.Success);
   logger.info("Encryption complete");
+  await refreshNoteView(note.id);
 }
 
 /**
@@ -358,11 +368,17 @@ export async function decryptNote(note: any) {
       });
       await showToast("Note decrypted successfully", ToastType.Success);
       logger.info("Decryption complete");
-      break;
+      await refreshNoteView(note.id);
+      return;
     } catch (error) {
-      logger.info("Incorrect password or decryption failed");
-      logger.debug(error);
-      msg = "Incorrect password, try again";
+      if (error instanceof WrongPasswordError) {
+        logger.info("Incorrect password");
+        msg = "Incorrect password, try again";
+      } else {
+        logger.info("Decryption failed: ", error);
+        showToast("Decryption faild", ToastType.Error);
+        return;
+      }
     }
   }
 }
@@ -371,7 +387,7 @@ export async function decryptNote(note: any) {
  * Decrypt the old encryption format note and remove the legacy tag.
  * @param note - Note to be decrypted (must contain id and body).
  */
-export async function decryptOldNote(note) {
+export async function decryptOldNote(note: any) {
   logger.debug("DecryptOldNote invoked");
 
   const parsed = validateOldFormat(note.body || "{}");
@@ -399,10 +415,17 @@ export async function decryptOldNote(note) {
       await removeTag(note.id, lockedTagId!);
       await showToast("Note decrypted successfully", ToastType.Success);
       logger.info("Decryption complete:", note.id);
+      await refreshNoteView(note.id);
       return;
-    } catch {
-      logger.info("Incorrect password or decryption failed");
-      msg = "Incorrect password, try again";
+    } catch (error) {
+      if (error instanceof WrongPasswordError) {
+        logger.info("Incorrect password");
+        msg = "Incorrect password, try again";
+      } else {
+        logger.info("Decryption failed: ", error);
+        showToast("Decryption faild", ToastType.Error);
+        return;
+      }
     }
   }
 }

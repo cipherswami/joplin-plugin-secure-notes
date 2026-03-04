@@ -179,3 +179,28 @@
   animation: jiggle 0.4s ease;
   border-color: #e05c5c !important;
 }
+
+/* ------------------ RTE ------------------ */
+
+.sn-rte {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 2em;
+  gap: 0.5em;
+}
+
+.sn-rte-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.sn-rte-msg {
+  font-size: 0.9rem;
+  opacity: 0.7;
+  margin: 0;
+  line-height: 1.6;
+}

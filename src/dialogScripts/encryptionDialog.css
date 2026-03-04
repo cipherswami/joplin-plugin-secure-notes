@@ -1,0 +1,46 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  padding: 0;
+}
+.passwd-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 1.5em 2em 1em;
+  width: 100%;
+}
+.passwd-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 0 0 0.5em 0;
+  padding: 0;
+  border-bottom: none;
+}
+.passwd-msg {
+  font-size: 0.95rem;
+  margin: 0 0 1em 0;
+  padding: 0;
+  opacity: 0.9;
+}
+.passwd-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5em;
+  margin: 0;
+  padding: 0;
+}
+.passwd-input {
+  width: 100%;
+  max-width: 260px;
+  padding: 0.5em;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 0.9rem;
+}
