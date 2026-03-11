@@ -150,7 +150,7 @@ joplin.plugins.register({
     await joplin.views.menus.create(
       INTERACTIONS.MENU,
       "Secure Notes",
-      [{ commandName: COMMANDS.ENCRYPT }, { commandName: COMMANDS.DECRYPT }],
+      [{ commandName: COMMANDS.TOGGLELOCK }],
       MenuItemLocation.Tools,
     );
 
@@ -184,6 +184,8 @@ joplin.plugins.register({
 
         // Get the editor mode
         if (message.type === "getEditorMode") {
+          // NOTE: Not used anymore, just keeping this in case
+          // necessary for future.
           const values = await joplin.settings.globalValues([
             "editor.codeView",
           ]);

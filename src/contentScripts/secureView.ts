@@ -24,55 +24,50 @@ export default function (context: any) {
       ) {
         const token = tokens[idx];
         const info = (token.info || "").trim();
+        const rendered = defaultFence(tokens, idx, options, env, self);
 
         if (info !== "SecureNotes") {
-          return defaultFence(tokens, idx, options, env, self);
+          return rendered;
         }
 
         const content = token.content;
         const escaped = markdownIt.utils.escapeHtml(content);
 
         return `
-          <div class="sn-view joplin-editable">
+          <div id="sn-md" class="sn-md joplin-editable">
             <pre
               class="joplin-source"
               data-joplin-language="SecureNotes"
               data-joplin-source-open="\`\`\`SecureNotes\n"
               data-joplin-source-close="\`\`\`"
-              data-content-script-id="${contentScriptId}"
             >${escaped}</pre>
-            <div id="sn-lock" class="sn-lock">
-              <h1 class="sn-lock-title">🔒 Secure Notes</h1>
-              <p class="sn-lock-info">This is an encrypted note</p>
-              <form id="sn-lock-form" class="sn-lock-form">
+            <div id="md-lock" class="md-lock">
+              <h1 id="md-lock-title" class="md-lock-title">🔒 Secure Notes</h1>
+              <p id="md-lock-info" class="md-lock-info">This is an encrypted note</p>
+              <form id="md-lock-form" class="md-lock-form">
                 <input
-                  id="sn-lock-input"
+                  id="md-lock-input"
                   type="password"
                   placeholder="Enter Password to View Note"
                   autocomplete="off"
                 />
-                <button type="button" id="sn-lock-btn">
-                  Unlock
-                </button>
+                <button type="button" id="md-lock-btn">Unlock</button>
               </form>
             </div>
-            <div id="sn-unlock" class="sn-unlock">
-              <div id="sn-unlock-info" class="sn-unlock-info">
-                🔒 This note is read-only. To edit it, decrypt the note, make changes, then re-encrypt.
+            <div id="md-unlock" class="md-unlock">
+              <div id="md-unlock-info" class="md-unlock-info">
+                🔒 This note is read-only. To edit it, decrypt the note, make changes,
+                then re-encrypt.
               </div>
-              <div id="sn-unlock-box" class="sn-unlock-box">
-                <div id="sn-unlock-content" class="sn-unlock-content">
-                </div>
+              <div id="md-unlock-box" class="md-unlock-box">
+                <div id="md-unlock-content" class="md-unlock-content"></div>
               </div>
             </div>
-            <div id="sn-rte" class="sn-rte">
-              <h1 class="sn-rte-title">🔒 Secure Notes</h1>
-              <p class="sn-rte-msg">
-                Secure Notes is not supported in the Rich Text Editor.<br/>
-                Switch to Markdown editor's viewer layout to view the contents.
-              </p>
+            <div class="md-joplin-data">
+              <div id="data-contentscript-id">${contentScriptId}</div>
             </div>
           </div>
+          <div id="sn-rte" class="sn-rte">${rendered}</div>
         `;
       };
     },
