@@ -11,7 +11,7 @@ function logger(msg) {
 }
 
 // ShowInputBox Error function
-function shakeInput(input, placeholderMsg) {
+async function shakeInput(input, placeholderMsg) {
   input.value = "";
   input.placeholder = placeholderMsg;
   input.classList.add("jiggle");
@@ -21,84 +21,81 @@ function shakeInput(input, placeholderMsg) {
 
 // Password handle function
 async function handleSubmit() {
-  const snLockInput = document.getElementById("sn-lock-input");
-  const password = snLockInput?.value?.trim() ?? "";
+  const csID = document.getElementById("data-contentscript-id").innerText;
+  const input = document.getElementById("md-lock-input");
+  const password = input?.value?.trim() ?? "";
 
   if (!password) {
-    shakeInput(snLockInput, "Password cannot be empty");
+    await shakeInput(input, "Password cannot be empty");
     logger("Empty password");
     return;
   }
 
-  const decryptionStatus = await webviewApi.postMessage(contentScriptId, {
+  const decryptionStatus = await webviewApi.postMessage(csID, {
     type: "password",
     msg: password,
   });
 
   if (decryptionStatus.type === "error") {
-    shakeInput(snLockInput, decryptionStatus.msg);
+    await shakeInput(input, decryptionStatus.msg);
     return;
   }
 
-  const snView = document.querySelector(".sn-view");
-  const snLock = document.getElementById("sn-lock");
-  const snUnlock = document.getElementById("sn-unlock");
-  const snUnlockContent = document.getElementById("sn-unlock-content");
+  const mdLock = document.getElementById("md-lock");
+  const mdUnlock = document.getElementById("md-unlock");
+  const mdUnlockContent = document.getElementById("md-unlock-content");
 
-  snView.classList.add("unlocked");
-  snLock.style.display = "none";
-  snUnlock.style.display = "flex";
-  snUnlockContent.innerHTML = decryptionStatus.msg;
+  mdLock.style.display = "none";
+  mdUnlock.style.display = "flex";
+  mdUnlockContent.innerHTML = decryptionStatus.msg;
 }
 
 // Initializtion
-document.addEventListener("joplin-noteDidUpdate", async function () {
-  const source = document.querySelector(".joplin-source");
-  const dataCSID = source?.getAttribute("data-content-script-id");
-  if (dataCSID) contentScriptId = dataCSID;
-
-  const snView = document.querySelector(".sn-view");
+async function init() {
+  const snMd = document.getElementById("sn-md");
   const snRte = document.getElementById("sn-rte");
-  const snLock = document.getElementById("sn-lock");
-  const snUnlock = document.getElementById("sn-unlock");
-  const input = document.getElementById("sn-lock-input");
+  const input = document.getElementById("md-lock-input");
 
-  const response = await webviewApi.postMessage(contentScriptId, {
-    type: "getEditorMode",
-  });
-  const isRTE = response?.mode === "rte";
+  const isRTE = document.body.classList.contains("mce-content-body");
 
+  // NOTE: The remove(), is solving the RTE bug.
   if (isRTE) {
-    if (snView) snView.style.display = "";
-    if (snRte) snRte.style.display = "flex";
-    if (snLock) snLock.style.display = "none";
-    if (snUnlock) snUnlock.style.display = "none";
-    if (source) source.style.display = "none";
+    // Show only RTE div, remove MD div entirely
+    if (snMd) snMd.remove();
+    if (snRte) snRte.style.display = "block";
   } else {
-    if (snView) snView.style.display = "";
-    if (snRte) snRte.style.display = "none";
-    if (source) source.style.display = "none";
-    if (snLock) snLock.style.display = "flex";
-    if (snUnlock) snUnlock.style.display = "none";
+    // Show only MD div, remove RTE div entirely
+    if (snRte) snRte.remove();
+    if (snMd) snMd.style.display = "flex";
     if (input) {
       input.value = "";
       input.placeholder = "Enter Password to View Note";
       input.focus();
     }
   }
-});
+}
 
 // Click event listener
 document.addEventListener("click", function (e) {
-  if (e.target.id === "sn-lock-btn") {
+  if (e.target.id === "md-lock-btn") {
     handleSubmit();
   }
 });
 
 // Keypress eventlistener
 document.addEventListener("keydown", function (e) {
-  if (e.target.id === "sn-lock-input" && e.key === "Enter") {
+  if (e.target.id === "md-lock-input" && e.key === "Enter") {
     e.preventDefault();
     handleSubmit();
   }
 });
+
+// Content update event listener
+document.addEventListener("joplin-noteDidUpdate", async () => {
+  await init();
+});
+
+// Delay run for artifacts
+setTimeout(async () => {
+  await init();
+}, 250);

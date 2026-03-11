@@ -170,7 +170,7 @@ export async function generateEncryptedNote(
 ) {
   const secureNotesBlock = `\`\`\`${PLUGIN_ID}
 ## Info
-This is an encrypted note, use Secure Notes plugin and switch to Markdown editor's viewer layout to view the contents.
+This is an encrypted note, use Secure Notes plugin and switch to Markdown editor's viewer layout.
 
 ## Encryption
 mode: ${aesOptions.AesMode}
