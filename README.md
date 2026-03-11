@@ -2,6 +2,12 @@
 
 Secure Notes is a Joplin plugin that lets you password-protect and encrypt your notes locally. It ensures your sensitive information stays private — only you can unlock and read your data.
 
+> [!IMPORTANT]
+> **SecureNotes-v2.2.6**  
+> This release migrates the encryption format from JSON-based to CodeFence-based, laying the groundwork for performance improvements in Joplin 3.6 and fixing bugs caused by note tags in the old JSON format. The plugin is temporarily limited to the Markdown viewer layout and is not supported in Rich Text Editor (RTE).
+>
+> See the **[CHANGELOG](./CHANGELOG.md)** for full details.
+
 ## Features
 
 - 🔒 **Password-Protected** - Encrypt sensitive notes with a password of your choice
@@ -63,6 +69,9 @@ Secure Notes is a Joplin plugin that lets you password-protect and encrypt your 
 3. Enter your password to view the note in read-only mode.
 4. The content is displayed temporarily without permanently decrypting the note.
 
+> [!NOTE]
+> Menu options for encrypt/decrypt is replaced with toggle Lock for this version.
+
 ## Settings
 
 Access plugin settings via `Tools > Options > Secure Notes`
@@ -78,7 +87,8 @@ Access plugin settings via `Tools > Options > Secure Notes`
 - **CTR** - Counter mode
 - **GCM** - Galois/Counter Mode (Recommended)
 
-> **Note:** Changing encryption settings only affects newly encrypted notes. Previously encrypted notes will use the settings that were active when they were encrypted.
+> [!NOTE]
+> Changing encryption settings only affects newly encrypted notes. Previously encrypted notes will use the settings that were active when they were encrypted.
 
 ## FAQ
 
@@ -93,6 +103,10 @@ A: No, encrypted content cannot be searched until the note is decrypted.
 
 **Q: What happens if I uninstall the plugin?**  
 A: Encrypted notes will remain encrypted. Reinstall the plugin to decrypt them.
+
+## Change Log
+
+See the full project history in [CHANGELOG](./CHANGELOG.md).
 
 ## Support
 
