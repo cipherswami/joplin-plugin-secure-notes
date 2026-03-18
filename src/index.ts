@@ -27,7 +27,6 @@ import {
   hasTag,
   showEncryptionDialog,
   showDecryptionDialog,
-  refreshNoteView,
 } from "./utils";
 import {
   AesOptions,
@@ -324,9 +323,9 @@ export async function encryptNote(note: any) {
     body: await generateEncryptedNote(aesOptions, encryptedData),
   });
 
+  await joplin.data.delete(["notes", note.id, "revisions"], null);
   await showToast("Note encrypted successfully", ToastType.Success);
   logger.info("Encryption complete");
-  await refreshNoteView(note.id);
 }
 
 /**
@@ -368,9 +367,9 @@ export async function decryptNote(note: any) {
       await joplin.data.put(["notes", note.id], null, {
         body: decryptedContent,
       });
+      await joplin.data.delete(["notes", note.id, "revisions"], null);
       await showToast("Note decrypted successfully", ToastType.Success);
       logger.info("Decryption complete");
-      await refreshNoteView(note.id);
       return;
     } catch (error) {
       if (error instanceof WrongPasswordError) {
@@ -415,9 +414,9 @@ export async function decryptOldNote(note: any) {
       );
       await joplin.data.put(["notes", note.id], null, { body: decrypted });
       await removeTag(note.id, lockedTagId!);
+      await joplin.data.delete(["notes", note.id, "revisions"], null);
       await showToast("Note decrypted successfully", ToastType.Success);
       logger.info("Decryption complete:", note.id);
-      await refreshNoteView(note.id);
       return;
     } catch (error) {
       if (error instanceof WrongPasswordError) {

@@ -348,29 +348,6 @@ export async function renderMarkdown(markupContent: string): Promise<string> {
 }
 
 /**
- * Referesh the view by opening temp note and shifting back
- * to original note.
- * @param noteId - Markdown RAW text.
- * NOTE: Added for mobile compatibility until joplin 3.6.12
- *       is released.
- */
-export async function refreshNoteView(noteId: string) {
-  const note = await joplin.data.get(["notes", noteId], {
-    fields: ["parent_id"],
-  });
-  const tempNote = await joplin.data.post(["notes"], null, {
-    title: "temp",
-    body: "",
-    parent_id: note.parent_id,
-  });
-
-  // Force refresh by switching notes
-  await joplin.commands.execute("openNote", tempNote.id);
-  await joplin.commands.execute("openNote", noteId);
-  await joplin.data.delete(["notes", tempNote.id], {});
-}
-
-/**
  * Payload format for the encrypted note
  * @interface
  */
