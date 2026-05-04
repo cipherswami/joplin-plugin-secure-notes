@@ -19,6 +19,11 @@ async function shakeInput(input, placeholderMsg) {
   input.focus();
 }
 
+function getLocalizedString(key, fallback) {
+  const source = document.getElementById("sn-md");
+  return source?.dataset?.[key] || fallback;
+}
+
 // Password handle function
 async function handleSubmit() {
   const csID = document.getElementById("data-contentscript-id").innerText;
@@ -26,7 +31,10 @@ async function handleSubmit() {
   const password = input?.value?.trim() ?? "";
 
   if (!password) {
-    await shakeInput(input, "Password cannot be empty");
+    await shakeInput(
+      input,
+      getLocalizedString("passwordCannotBeEmpty", "Password cannot be empty"),
+    );
     logger("Empty password");
     return;
   }
@@ -69,7 +77,10 @@ async function init() {
     if (snMd) snMd.style.display = "flex";
     if (input) {
       input.value = "";
-      input.placeholder = "Enter Password to View Note";
+      input.placeholder = getLocalizedString(
+        "enterPasswordToViewNote",
+        "Enter Password to View Note",
+      );
       input.focus();
     }
   }

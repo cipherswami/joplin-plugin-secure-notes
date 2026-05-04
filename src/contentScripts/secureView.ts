@@ -3,6 +3,15 @@
  * @description : SecureNotes MarkdownIt renderer (RTE-safe).
  */
 
+import strings from "../localization";
+
+const escapeHtmlAttribute = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
 export default function (context: any) {
   const contentScriptId = context.contentScriptId;
   return {
@@ -34,7 +43,12 @@ export default function (context: any) {
         const escaped = markdownIt.utils.escapeHtml(content);
 
         return `
-          <div id="sn-md" class="sn-md joplin-editable">
+          <div
+            id="sn-md"
+            class="sn-md joplin-editable"
+            data-password-cannot-be-empty="${escapeHtmlAttribute(strings.passwordCannotBeEmpty)}"
+            data-enter-password-to-view-note="${escapeHtmlAttribute(strings.enterPasswordToViewNote)}"
+          >
             <pre
               class="joplin-source"
               data-joplin-language="SecureNotes"
@@ -43,21 +57,20 @@ export default function (context: any) {
             >${escaped}</pre>
             <div id="md-lock" class="md-lock">
               <h1 id="md-lock-title" class="md-lock-title">🔒 Secure Notes</h1>
-              <p id="md-lock-info" class="md-lock-info">This is an encrypted note</p>
+              <p id="md-lock-info" class="md-lock-info">${strings.secureViewEncryptedNoteInfo}</p>
               <form id="md-lock-form" class="md-lock-form">
                 <input
                   id="md-lock-input"
                   type="password"
-                  placeholder="Enter Password to View Note"
+                  placeholder="${escapeHtmlAttribute(strings.enterPasswordToViewNote)}"
                   autocomplete="off"
                 />
-                <button type="button" id="md-lock-btn">Unlock</button>
+                <button type="button" id="md-lock-btn">${strings.secureViewUnlockButton}</button>
               </form>
             </div>
             <div id="md-unlock" class="md-unlock">
               <div id="md-unlock-info" class="md-unlock-info">
-                🔒 This note is read-only. To edit it, decrypt the note, make changes,
-                then re-encrypt.
+                ${strings.secureViewReadOnlyInfo}
               </div>
               <div id="md-unlock-box" class="md-unlock-box">
                 <div id="md-unlock-content" class="md-unlock-content"></div>
