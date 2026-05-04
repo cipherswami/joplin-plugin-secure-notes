@@ -9,6 +9,7 @@ import joplin from "api";
 import { ToastType } from "api/types";
 import { AesOptions } from "./encryption";
 import { PLUGIN_ID } from "./index";
+import strings from "./localization";
 import MarkdownIt = require("markdown-it");
 
 /**
@@ -49,13 +50,13 @@ export async function showEncryptionDialog(
             name="password"
             class="passwd-input"
             type="password"
-            placeholder="password"
+            placeholder="${strings.passwordPlaceholder}"
           />
           <input
             name="confirmPassword"
             class="passwd-input"
             type="password"
-            placeholder="confirm password"
+            placeholder="${strings.confirmPasswordPlaceholder}"
           />
           <input type="submit" style="display: none;" />
         </form>
@@ -71,8 +72,8 @@ export async function showEncryptionDialog(
       "./dialogScripts/encryptionDialog.js",
     );
     await dialogs.setButtons(passwdDialogID, [
-      { id: "ok", title: "Ok" },
-      { id: "cancel", title: "Cancel" },
+      { id: "ok", title: strings.okButton },
+      { id: "cancel", title: strings.cancelButton },
     ]);
     await dialogs.setFitToContent(passwdDialogID, true);
     const result = await dialogs.open(passwdDialogID);
@@ -80,11 +81,11 @@ export async function showEncryptionDialog(
     const password = result.formData?.passwordForm?.password || "";
     const confirm = result.formData?.passwordForm?.confirmPassword || "";
     if (!password) {
-      currentMsg = "Password cannot be empty";
+      currentMsg = strings.passwordCannotBeEmpty;
       continue;
     }
     if (password !== confirm) {
-      currentMsg = "Passwords do not match";
+      currentMsg = strings.passwordsDoNotMatch;
       continue;
     }
     return password;
@@ -116,7 +117,7 @@ export async function showDecryptionDialog(
             name="password"
             class="passwd-input"
             type="password"
-            placeholder="password"
+            placeholder="${strings.passwordPlaceholder}"
           />
           <input type="submit" style="display: none;" />
         </form>
@@ -132,15 +133,15 @@ export async function showDecryptionDialog(
       "./dialogScripts/decryptionDialog.js",
     );
     await dialogs.setButtons(passwdDialogID, [
-      { id: "ok", title: "Ok" },
-      { id: "cancel", title: "Cancel" },
+      { id: "ok", title: strings.okButton },
+      { id: "cancel", title: strings.cancelButton },
     ]);
     await dialogs.setFitToContent(passwdDialogID, true);
     const result = await dialogs.open(passwdDialogID);
     if (result.id !== "ok") return null;
     const password = result.formData?.passwordForm?.password || "";
     if (!password) {
-      currentMsg = "Password cannot be empty";
+      currentMsg = strings.passwordCannotBeEmpty;
       continue;
     }
     return password;
@@ -170,7 +171,7 @@ export async function generateEncryptedNote(
 ) {
   const secureNotesBlock = `\`\`\`${PLUGIN_ID}
 ## Info
-This is an encrypted note, use Secure Notes plugin and switch to Markdown editor's viewer layout.
+${strings.encryptedNoteInfo}
 
 ## Encryption
 mode: ${aesOptions.AesMode}
@@ -236,18 +237,17 @@ export async function showLegacyDialog(legacyDialogId: any): Promise<boolean> {
     `
     <div class="legacy-container">
       <h1 class="legacy-title">Secure Notes</h1>
-      <h3 class="legacy-msg">Legacy format</h3>
+      <h3 class="legacy-msg">${strings.legacyFormatTitle}</h3>
       <p class="legacy-info">
-        This note was encrypted with an older version of Secure Notes.<br/>
-        Decrypt it and re-encrypt to upgrade to the new format.
+        ${strings.legacyFormatInfo}
       </p>
     </div>
     `,
   );
   await dialogs.addScript(legacyDialogId, "./dialogScripts/legacyDialog.css");
   await dialogs.setButtons(legacyDialogId, [
-    { id: "decrypt", title: "Decrypt Note" },
-    { id: "close", title: "Close" },
+    { id: "decrypt", title: strings.decryptNoteCommand },
+    { id: "close", title: strings.closeButton },
   ]);
   await dialogs.setFitToContent(legacyDialogId, true);
   const result = await dialogs.open(legacyDialogId);

@@ -36,10 +36,12 @@ import {
   decryptData,
 } from "./encryption";
 import { createLogger } from "./pluginLogger";
+import strings, { setLocale } from "./localization";
 
 /** Global constants */
 export const PLUGIN_ID = "SecureNotes";
 export const LOG_LEVEL = "DEBUG";
+const JOPLIN_LOCALE_SETTING = "locale";
 
 export const SETTINGS_SECTION = {
   MAIN: `${PLUGIN_ID}.settings`,
@@ -83,9 +85,11 @@ const logger = createLogger(`[${PLUGIN_ID}]`, LOG_LEVEL);
  */
 joplin.plugins.register({
   onStart: async () => {
+    await initializeLocale();
+
     // Register settings section
     await joplin.settings.registerSection(SETTINGS_SECTION.MAIN, {
-      label: "Secure Notes",
+      label: strings.settingsSectionLabel,
       iconName: "fas fa-user-shield",
     });
 
@@ -96,11 +100,11 @@ joplin.plugins.register({
         type: SettingItemType.Int,
         section: SETTINGS_SECTION.MAIN,
         public: true,
-        label: "AES Key Size",
+        label: strings.aesKeySizeLabel,
         isEnum: true,
         options: {
           128: "128-bit",
-          256: "256-bit (Recommended)",
+          256: `256-bit (${strings.recommendedOptionSuffix})`,
         },
       },
       [SETTINGS_MAIN.AES_MODE]: {
@@ -108,12 +112,12 @@ joplin.plugins.register({
         type: SettingItemType.String,
         section: SETTINGS_SECTION.MAIN,
         public: true,
-        label: "AES Cipher Mode",
+        label: strings.aesCipherModeLabel,
         isEnum: true,
         options: {
           "AES-CBC": "CBC",
           "AES-CTR": "CTR",
-          "AES-GCM": "GCM (Recommended)",
+          "AES-GCM": `GCM (${strings.recommendedOptionSuffix})`,
         },
       },
     });
@@ -121,14 +125,14 @@ joplin.plugins.register({
     // Register commands
     await joplin.commands.register({
       name: COMMANDS.ENCRYPT,
-      label: "Encrypt Note",
+      label: strings.encryptNoteCommand,
       enabledCondition: "oneNoteSelected",
       execute: encryptNote,
       iconName: "fas fa-lock",
     });
     await joplin.commands.register({
       name: COMMANDS.DECRYPT,
-      label: "Decrypt Note",
+      label: strings.decryptNoteCommand,
       enabledCondition: "oneNoteSelected",
       execute: decryptNote,
       iconName: "fas fa-unlock",
@@ -136,7 +140,7 @@ joplin.plugins.register({
     await joplin.commands.register({
       name: COMMANDS.TOGGLELOCK,
       enabledCondition: "oneNoteSelected",
-      label: "Toggle Note Lock",
+      label: strings.toggleNoteLockCommand,
       execute: toggleLock,
       iconName: "fas fa-user-lock",
     });
@@ -211,6 +215,18 @@ joplin.plugins.register({
 /**
  * Update global vars based on settings change.
  */
+async function initializeLocale() {
+  try {
+    const locale = await joplin.settings.globalValue(JOPLIN_LOCALE_SETTING);
+
+    if (typeof locale === "string" && locale.trim()) {
+      setLocale(locale);
+    }
+  } catch (error) {
+    logger.warn("Failed to initialize locale:", error);
+  }
+}
+
 async function updateSettings() {
   const pluginSettings = await joplin.settings.values([
     SETTINGS_MAIN.KEY_SIZE,
@@ -267,8 +283,8 @@ export async function handlePasswdSubmit(passwd: string) {
 
   if (!parsed) {
     logger.error("Invalid format");
-    await showToast("Invalid format", ToastType.Error);
-    return { type: "error", msg: "Invalid format" };
+    await showToast(strings.invalidFormat, ToastType.Error);
+    return { type: "error", msg: strings.invalidFormat };
   }
 
   try {
@@ -287,11 +303,11 @@ export async function handlePasswdSubmit(passwd: string) {
   } catch (error) {
     if (error instanceof WrongPasswordError) {
       logger.info("Incorrect password");
-      return { type: "error", msg: "Incorrect password, try again" };
+      return { type: "error", msg: strings.incorrectPasswordTryAgain };
     }
     logger.error("Decryption error:", error);
-    showToast("Decryption failed", ToastType.Error);
-    return { type: "error", msg: "Decryption failed" };
+    showToast(strings.decryptionFailed, ToastType.Error);
+    return { type: "error", msg: strings.decryptionFailed };
   }
 }
 
@@ -306,13 +322,13 @@ export async function encryptNote(note: any) {
 
   if (isLocked) {
     logger.debug("Note is already encrypted");
-    await showToast("Note is already encrypted", ToastType.Info);
+    await showToast(strings.noteIsAlreadyEncrypted, ToastType.Info);
     return;
   }
 
   const passwd = await showEncryptionDialog(
     encryptionDialogId,
-    "Enter password to Encrypt",
+    strings.enterPasswordToEncrypt,
   );
   if (!passwd) {
     logger.debug("Password dialog cancelled");
@@ -324,7 +340,7 @@ export async function encryptNote(note: any) {
     body: await generateEncryptedNote(aesOptions, encryptedData),
   });
 
-  await showToast("Note encrypted successfully", ToastType.Success);
+  await showToast(strings.noteEncryptedSuccessfully, ToastType.Success);
   logger.info("Encryption complete");
   await refreshNoteView(note.id);
 }
@@ -339,18 +355,18 @@ export async function decryptNote(note: any) {
 
   if (!isLocked) {
     logger.debug("Note is not encrypted");
-    await showToast("Note is not encrypted", ToastType.Info);
+    await showToast(strings.noteIsNotEncrypted, ToastType.Info);
     return;
   }
 
   const parsed = await validateFormat(note.body);
   if (!parsed) {
     logger.error("Invalid format");
-    await showToast("Invalid format", ToastType.Error);
+    await showToast(strings.invalidFormat, ToastType.Error);
     return;
   }
 
-  let msg = "Enter password to Decrypt";
+  let msg = strings.enterPasswordToDecrypt;
   // TODO: This is dangerous, limit it to 3 counts.
   while (true) {
     const passwd = await showDecryptionDialog(decryptionDialogId, msg);
@@ -368,17 +384,17 @@ export async function decryptNote(note: any) {
       await joplin.data.put(["notes", note.id], null, {
         body: decryptedContent,
       });
-      await showToast("Note decrypted successfully", ToastType.Success);
+      await showToast(strings.noteDecryptedSuccessfully, ToastType.Success);
       logger.info("Decryption complete");
       await refreshNoteView(note.id);
       return;
     } catch (error) {
       if (error instanceof WrongPasswordError) {
         logger.info("Incorrect password");
-        msg = "Incorrect password, try again";
+        msg = strings.incorrectPasswordTryAgain;
       } else {
         logger.info("Decryption failed: ", error);
-        showToast("Decryption faild", ToastType.Error);
+        showToast(strings.decryptionFailed, ToastType.Error);
         return;
       }
     }
@@ -395,11 +411,11 @@ export async function decryptOldNote(note: any) {
   const parsed = validateOldFormat(note.body || "{}");
   if (!parsed) {
     logger.error("Invalid old format");
-    await showToast("Invalid old format", ToastType.Error);
+    await showToast(strings.invalidOldFormat, ToastType.Error);
     return;
   }
 
-  let msg = "Enter password to Decrypt";
+  let msg = strings.enterPasswordToDecrypt;
 
   while (true) {
     const passwd = await showDecryptionDialog(decryptionDialogId, msg);
@@ -415,17 +431,17 @@ export async function decryptOldNote(note: any) {
       );
       await joplin.data.put(["notes", note.id], null, { body: decrypted });
       await removeTag(note.id, lockedTagId!);
-      await showToast("Note decrypted successfully", ToastType.Success);
+      await showToast(strings.noteDecryptedSuccessfully, ToastType.Success);
       logger.info("Decryption complete:", note.id);
       await refreshNoteView(note.id);
       return;
     } catch (error) {
       if (error instanceof WrongPasswordError) {
         logger.info("Incorrect password");
-        msg = "Incorrect password, try again";
+        msg = strings.incorrectPasswordTryAgain;
       } else {
         logger.info("Decryption failed: ", error);
-        showToast("Decryption faild", ToastType.Error);
+        showToast(strings.decryptionFailed, ToastType.Error);
         return;
       }
     }
