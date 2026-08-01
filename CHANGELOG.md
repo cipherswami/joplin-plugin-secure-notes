@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 The plugin now exclusively uses the ContentScript implementation and no longer includes the Editor API or format migration compatibility layer.
 
+### Added
+
+- Health documentation files.
+
 ### Removed
 
 - Editor API implementation.
