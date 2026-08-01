@@ -58,12 +58,7 @@ async function init() {
 
   const isRTE = document.body.classList.contains("mce-content-body");
 
-  // NOTE: The remove(), is solving the RTE bug.
-  if (isRTE) {
-    // Show only RTE div, remove MD div entirely
-    if (snMd) snMd.remove();
-    if (snRte) snRte.style.display = "block";
-  } else {
+  if (!isRTE) {
     // Show only MD div, remove RTE div entirely
     if (snRte) snRte.remove();
     if (snMd) snMd.style.display = "flex";
@@ -72,6 +67,10 @@ async function init() {
       input.placeholder = "Enter Password to View Note";
       input.focus();
     }
+  } else {
+    // Show only RTE div, remove MD div entirely
+    if (snMd) snMd.remove();
+    if (snRte) snRte.style.display = "block";
   }
 }
 
@@ -98,4 +97,4 @@ document.addEventListener("joplin-noteDidUpdate", async () => {
 // Delay run for artifacts
 setTimeout(async () => {
   await init();
-}, 250);
+}, 200);

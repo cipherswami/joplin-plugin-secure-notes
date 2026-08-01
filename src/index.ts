@@ -7,39 +7,34 @@
 
 /** Imports */
 import joplin from "api";
+import { LogLevel, createLogger } from "./logger";
 import {
   ToastType,
   SettingItemType,
+  ContentScriptType,
   ToolbarButtonLocation,
   MenuItemLocation,
-  ContentScriptType,
 } from "api/types";
-import {
-  showToast,
-  validateFormat,
-  renderMarkdown,
-  isNoteLocked,
-  generateEncryptedNote,
-  showLegacyDialog,
-  validateOldFormat,
-  removeTag,
-  getTagID,
-  hasTag,
-  showEncryptionDialog,
-  showDecryptionDialog,
-  refreshNoteView,
-} from "./utils";
 import {
   AesOptions,
   WrongPasswordError,
   encryptData,
   decryptData,
 } from "./encryption";
-import { createLogger } from "./pluginLogger";
+import {
+  showToast,
+  isNoteLocked,
+  generateEncryptedNote,
+  validateFormat,
+  renderMarkdown,
+} from "./utils";
+import {
+  showEncryptionDialog,
+  showDecryptionDialog,
+} from "./dialogScripts/passwdDialogs";
 
 /** Global constants */
 export const PLUGIN_ID = "SecureNotes";
-export const LOG_LEVEL = "DEBUG";
 
 export const SETTINGS_SECTION = {
   MAIN: `${PLUGIN_ID}.settings`,
@@ -66,17 +61,16 @@ export const CONTENT_SCRIPT = {
 };
 
 /** Global state */
+let logLevel: LogLevel = "DEBUG";
 let encryptionDialogId: string | null = null;
 let decryptionDialogId: string | null = null;
-let LegacyNoteDialogId: string | null = null;
-let lockedTagId: string | null = null;
 let aesOptions: AesOptions = {
   KeySize: 256,
   AesMode: "AES-GCM",
 };
 
 /** Logger instance */
-const logger = createLogger(`[${PLUGIN_ID}]`, LOG_LEVEL);
+const logger = createLogger(`[${PLUGIN_ID}]`, logLevel);
 
 /**
  * Plugin registerations - commands, UI, and settings, etc.
@@ -86,7 +80,7 @@ joplin.plugins.register({
     // Register settings section
     await joplin.settings.registerSection(SETTINGS_SECTION.MAIN, {
       label: "Secure Notes",
-      iconName: "fas fa-user-shield",
+      iconName: "fas fa-shield-alt",
     });
 
     // Register plugin settings
@@ -136,9 +130,9 @@ joplin.plugins.register({
     await joplin.commands.register({
       name: COMMANDS.TOGGLELOCK,
       enabledCondition: "oneNoteSelected",
-      label: "Toggle Note Lock",
+      label: "Lock/Unlock Note",
       execute: toggleLock,
-      iconName: "fas fa-user-lock",
+      iconName: "fas fa-key",
     });
 
     // Register toolbar and menu entries
@@ -150,7 +144,7 @@ joplin.plugins.register({
     await joplin.views.menus.create(
       INTERACTIONS.MENU,
       "Secure Notes",
-      [{ commandName: COMMANDS.TOGGLELOCK }],
+      [{ commandName: COMMANDS.ENCRYPT }, { commandName: COMMANDS.DECRYPT }],
       MenuItemLocation.Tools,
     );
 
@@ -181,29 +175,13 @@ joplin.plugins.register({
           const decryptStatus = await handlePasswdSubmit(message.msg);
           return decryptStatus;
         }
-
-        // Get the editor mode
-        if (message.type === "getEditorMode") {
-          // NOTE: Not used anymore, just keeping this in case
-          // necessary for future.
-          const values = await joplin.settings.globalValues([
-            "editor.codeView",
-          ]);
-          return { mode: values[0] ? "markdown" : "rte" };
-        }
       },
     );
 
-    await joplin.workspace.onNoteSelectionChange(async () => {
-      await checkForLegacyNote();
-    });
-
     // Initialize plugin state
-    logger.info("Plugin started");
+    logger.info("Plugin started successfully");
     encryptionDialogId = await joplin.views.dialogs.create("encryptionDialog");
     decryptionDialogId = await joplin.views.dialogs.create("decryptionDialog");
-    LegacyNoteDialogId = await joplin.views.dialogs.create("LegacyNoteDialog");
-    lockedTagId = await getTagID("secure-notes");
     await updateSettings();
   },
 });
@@ -223,32 +201,6 @@ async function updateSettings() {
   };
 
   logger.info("Settings:", aesOptions.KeySize, aesOptions.AesMode);
-}
-
-/**
- * Function which triggers encrypt/decrypt Note function based on locked status.
- */
-async function toggleLock() {
-  logger.debug("ToggleLock invoked");
-  // TODO: Fix the workspace.SelectedNote() in joplin and use it.
-  // Two calls to the DB can be reduced to one call.
-  const [noteId] = await joplin.workspace.selectedNoteIds();
-  const note = await joplin.data.get(["notes", noteId], {
-    fields: ["id", "body"],
-  });
-  logger.debug("noteID:", note.id);
-
-  const isLocked = await isNoteLocked(note.body);
-  const isOldLocked = await hasTag(note.id, lockedTagId!);
-  logger.debug("IsLocked:", isLocked, "IsOldLocked:", isOldLocked);
-
-  if (isLocked) {
-    await decryptNote(note);
-  } else if (isOldLocked) {
-    await decryptOldNote(note);
-  } else {
-    await encryptNote(note);
-  }
 }
 
 /**
@@ -278,6 +230,7 @@ export async function handlePasswdSubmit(passwd: string) {
       passwd,
     );
 
+    // TODO: Instead of using markdownIt externally. Try to use the Joplin's renderer.
     const renderedContent = await renderMarkdown(decryptedContent);
 
     return {
@@ -296,11 +249,42 @@ export async function handlePasswdSubmit(passwd: string) {
 }
 
 /**
+ * Function to toggle note lock.
+ */
+async function toggleLock() {
+  logger.debug("ToggleLock invoked");
+
+  // TODO: Fix the workspace.SelectedNote() in joplin and use it.
+  // Two calls to the DB can be reduced to one call.
+  const [noteId] = await joplin.workspace.selectedNoteIds();
+  const note = await joplin.data.get(["notes", noteId], {
+    fields: ["id", "body"],
+  });
+  logger.debug("noteID:", note.id);
+
+  const isLocked = await isNoteLocked(note.body);
+  logger.debug("isLocked:", isLocked);
+
+  if (isLocked) {
+    await decryptNote(note);
+  } else {
+    await encryptNote(note);
+  }
+}
+
+/**
  * Encrypt the active note using a password and AES encryption.
  * @param note Note to be encrypted.
  */
 export async function encryptNote(note: any) {
   logger.debug("EncryptNote invoked");
+
+  if (!note) {
+    const [noteId] = await joplin.workspace.selectedNoteIds();
+    note = await joplin.data.get(["notes", noteId], {
+      fields: ["id", "body"],
+    });
+  }
 
   const isLocked = await isNoteLocked(note.body);
 
@@ -326,7 +310,6 @@ export async function encryptNote(note: any) {
 
   await showToast("Note encrypted successfully", ToastType.Success);
   logger.info("Encryption complete");
-  await refreshNoteView(note.id);
 }
 
 /**
@@ -335,6 +318,13 @@ export async function encryptNote(note: any) {
  */
 export async function decryptNote(note: any) {
   logger.debug("DecryptNote invoked");
+
+  if (!note) {
+    const [noteId] = await joplin.workspace.selectedNoteIds();
+    note = await joplin.data.get(["notes", noteId], {
+      fields: ["id", "body"],
+    });
+  }
   const isLocked = await isNoteLocked(note.body);
 
   if (!isLocked) {
@@ -370,7 +360,6 @@ export async function decryptNote(note: any) {
       });
       await showToast("Note decrypted successfully", ToastType.Success);
       logger.info("Decryption complete");
-      await refreshNoteView(note.id);
       return;
     } catch (error) {
       if (error instanceof WrongPasswordError) {
@@ -383,71 +372,4 @@ export async function decryptNote(note: any) {
       }
     }
   }
-}
-
-/**
- * Decrypt the old encryption format note and remove the legacy tag.
- * @param note - Note to be decrypted (must contain id and body).
- */
-export async function decryptOldNote(note: any) {
-  logger.debug("DecryptOldNote invoked");
-
-  const parsed = validateOldFormat(note.body || "{}");
-  if (!parsed) {
-    logger.error("Invalid old format");
-    await showToast("Invalid old format", ToastType.Error);
-    return;
-  }
-
-  let msg = "Enter password to Decrypt";
-
-  while (true) {
-    const passwd = await showDecryptionDialog(decryptionDialogId, msg);
-    if (!passwd) {
-      logger.debug("Password dialog cancelled");
-      return;
-    }
-    try {
-      const decrypted = await decryptData(
-        parsed.encryption,
-        parsed.data,
-        passwd,
-      );
-      await joplin.data.put(["notes", note.id], null, { body: decrypted });
-      await removeTag(note.id, lockedTagId!);
-      await showToast("Note decrypted successfully", ToastType.Success);
-      logger.info("Decryption complete:", note.id);
-      await refreshNoteView(note.id);
-      return;
-    } catch (error) {
-      if (error instanceof WrongPasswordError) {
-        logger.info("Incorrect password");
-        msg = "Incorrect password, try again";
-      } else {
-        logger.info("Decryption failed: ", error);
-        showToast("Decryption faild", ToastType.Error);
-        return;
-      }
-    }
-  }
-}
-
-/**
- * Checks if the currently selected note has the legacy "secure-notes" tag,
- * and if so, shows a migration dialog with Decrypt and Close options.
- */
-async function checkForLegacyNote() {
-  const note = await joplin.workspace.selectedNote();
-  if (!note) return;
-
-  if (!lockedTagId) return;
-  if (!(await hasTag(note.id, lockedTagId))) return;
-
-  const shouldDecrypt = await showLegacyDialog(LegacyNoteDialogId);
-  if (!shouldDecrypt) return;
-
-  const fullNote = await joplin.data.get(["notes", note.id], {
-    fields: ["id", "body"],
-  });
-  await decryptOldNote(fullNote);
 }

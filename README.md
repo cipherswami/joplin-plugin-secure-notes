@@ -1,12 +1,11 @@
 # Secure Notes
 
-Secure Notes is a Joplin plugin that lets you password-protect and encrypt your notes locally. It ensures your sensitive information stays private — only you can unlock and read your data.
+Secure Notes is a Joplin plugin that lets you password-protect and encrypt your joplin notes locally. It ensures your sensitive information stays private — only you can unlock and read your data.
 
 > [!IMPORTANT]
-> **SecureNotes-v2.2.6**  
-> This release migrates the encryption format from JSON-based to CodeFence-based, laying the groundwork for performance improvements in Joplin 3.6 and fixing bugs caused by note tags in the old JSON format. The plugin is temporarily limited to the Markdown viewer layout and is not supported in Rich Text Editor (RTE).
+> The v3.x series removes the **Editor API** and **format migration** code. The plugin now solely relies on the Content Scripts implementation.
 >
-> See the **[CHANGELOG](./CHANGELOG.md)** for full details.
+> **Breaking change:** Support for the JSON encryption format has been removed. If you have notes encrypted with the old JSON based format, migrate them to CodeFenced based format using **v2.2.6** before upgrading to v3.x.
 
 ## Features
 
@@ -51,26 +50,23 @@ Secure Notes is a Joplin plugin that lets you password-protect and encrypt your 
 ### Encrypt Note
 
 1. Select the note you want to encrypt.
-2. Click the lock icon in the toolbar, or go to `Tools > Secure Notes > Encrypt Note`.
+2. Click the key icon in the toolbar, or go to `Tools > Secure Notes > Encrypt Note`.
 3. Enter a password when prompted.
-4. The note will be encrypted and encryption tag is added.
-
-### Decrypt Note
-
-1. Select an encrypted note.
-2. Click the unlock icon in the toolbar, or go to `Tools > Secure Notes > Decrypt Note`.
-3. Enter the correct password.
-4. The note will be permanently decrypted and the encryption tag removed.
+4. The note will be encrypted.
 
 ### View Note
 
 1. Select an encrypted note.
 2. The plugin will automatically prompt for a password.
 3. Enter your password to view the note in read-only mode.
-4. The content is displayed temporarily without permanently decrypting the note.
+4. The note is decrypted in RAM and displayed temporarily in SecureView.
 
-> [!NOTE]
-> Menu options for encrypt/decrypt is replaced with toggle Lock for this version.
+### Decrypt Note
+
+1. Select an encrypted note.
+2. Click the key icon in the toolbar, or go to `Tools > Secure Notes > Decrypt Note`.
+3. Enter the correct password.
+4. The note will be permanently decrypted.
 
 ## Settings
 
@@ -92,17 +88,17 @@ Access plugin settings via `Tools > Options > Secure Notes`
 
 ## FAQ
 
-**Q: Can I encrypt all my notes or notebook at once?**  
-A: Currently, the plugin encrypts notes individually. Batch encryption may be added in future versions.
-
-**Q: Are resources in my notes encrypted?**  
-A: This plugin only encrypts your note contents. Resources like images, attachments are **not** encrypted because they’re just hyperlinks not the actual files themselves.
+**Q: What happens if I uninstall the plugin?**  
+A: Encrypted notes will remain encrypted. Reinstall the plugin to decrypt them.
 
 **Q: Are encrypted notes searchable?**  
 A: No, encrypted content cannot be searched until the note is decrypted.
 
-**Q: What happens if I uninstall the plugin?**  
-A: Encrypted notes will remain encrypted. Reinstall the plugin to decrypt them.
+**Q: Are resources in my notes encrypted?**  
+A: This plugin only encrypts your note contents. Resources like images, attachments are **not** encrypted because they’re just hyperlinks not the actual files themselves.
+
+**Q: Can I encrypt all my notes or notebook at once?**  
+A: Currently, the plugin encrypts notes individually. Batch encryption may be added in future versions.
 
 ## Change Log
 

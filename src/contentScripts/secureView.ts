@@ -8,7 +8,7 @@ export default function (context: any) {
   return {
     plugin: function (markdownIt: any, _options: any) {
       // TODO: Request a new _options var in markdownIt for getting
-      // the status of codeView instead of getting it from settings.
+      // the status of codeView instead of getting it from HTML.
       const defaultFence =
         markdownIt.renderer.rules.fence ||
         function (tokens: any, idx: number, options: any, env: any, self: any) {
