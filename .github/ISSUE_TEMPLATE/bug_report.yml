@@ -1,0 +1,69 @@
+name: Bug Report
+description: Report a problem or unexpected behavior.
+labels:
+  - bug
+assignees:
+  - cipherswami
+
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: Briefly describe what went wrong.
+      placeholder: |
+        Tell us what you see.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the steps needed to reproduce.
+      placeholder: |
+        1. Go there ...
+        2. Do this ...
+        3. See that ...
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: Enter Plugin version.
+      placeholder: "e.g. 2.2.6"
+    validations:
+      required: true
+
+  - type: input
+    id: joplin-version
+    attributes:
+      label: Joplin version
+      description: Enter Joplin version.
+      placeholder: "e.g. 3.6.1"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: devices
+    attributes:
+      label: Affected devices
+      description: Select all that apply.
+      options:
+        - label: Windows
+        - label: macOS
+        - label: Linux
+        - label: Android
+        - label: iOS
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: acknowledgement
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and couldn't find a similar bug report.
+          required: true

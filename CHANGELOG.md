@@ -9,6 +9,7 @@ The plugin now exclusively uses the ContentScript implementation and no longer i
 ### Added
 
 - Health documentation files.
+- GitHub issue/pr template files.
 
 ### Removed
 

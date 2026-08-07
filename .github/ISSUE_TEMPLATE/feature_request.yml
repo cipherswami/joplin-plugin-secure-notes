@@ -1,0 +1,35 @@
+name: Feature Request
+description: Suggest an idea or enhancement.
+labels:
+  - enhancement
+assignees:
+  - cipherswami
+
+body:
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Describe the feature
+      description: Briefly explain your idea.
+      placeholder: |
+        Tell us what it is and how it would improve the project or solve a problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches or solutions have you considered?
+      placeholder: |
+        Describe any alternative solutions or workarounds you've thought about, and why they fall short.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: acknowledgement
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and couldn't find a similar feature request.
+          required: true
